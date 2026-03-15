@@ -27,31 +27,11 @@ function AjustarAlGeoJSON({ data }) {
 
 export default function MapaEspacios({
   geoData,
-  plantaSeleccionada,
+  plantaSeleccionada, // solo para el título del mapa si quieres, NO filtramos aquí
   onSeleccionarEspacio,
 }) {
-  // APLICAMOS FILTRO DE PLANTA A geoData
-  const featuresFiltradas = geoData
-    ? {
-        ...geoData,
-        features: geoData.features.filter((feature) => {
-          const props = feature.properties || {};
-          const rawPlanta =
-            props.planta ??
-            props.PLANTA ??
-            props.Altura ??
-            props.altura ??
-            null;
-
-          // sin filtro -> todas
-          if (plantaSeleccionada === "" || plantaSeleccionada === null) {
-            return true;
-          }
-
-          return String(rawPlanta) === String(plantaSeleccionada);
-        }),
-      }
-    : null;
+  // IMPORTANTE: geoData YA viene filtrado desde HomePage (planta + texto + categoría)
+  const featuresFiltradas = geoData || null;
 
   const style = (feature) => ({
     color: colorPorUso(feature.properties?.uso),
@@ -83,6 +63,12 @@ export default function MapaEspacios({
     });
   };
 
+  // key hace que el GeoJSON se recree cuando cambian las features filtradas
+  const geoKey =
+    featuresFiltradas && featuresFiltradas.features
+      ? featuresFiltradas.features.length
+      : "0";
+
   return (
     <MapContainer
       center={[41.683, -0.89]}
@@ -96,9 +82,8 @@ export default function MapaEspacios({
 
       {featuresFiltradas && (
         <>
-          {/* Forzamos a React-Leaflet a recrear la capa al cambiar de planta */}
           <GeoJSON
-            key={plantaSeleccionada || "todas"}
+            key={geoKey}
             data={featuresFiltradas}
             style={style}
             onEachFeature={onEachFeature}
