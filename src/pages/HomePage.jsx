@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useEspaciosGeo } from "../hooks/useEspaciosGeo";
 import MapaEspacios from "../components/MapaEspacios";
+import { FiSearch } from "react-icons/fi";  
 import "./HomePage.css";
 
 export default function HomePage() {
@@ -11,9 +12,9 @@ export default function HomePage() {
   const plantas = useMemo(() => {
     if (!data) return [];
     const unicas = new Set(
-        data.features
+      data.features
         .map(
-            (f) =>
+          (f) =>
             f.properties?.planta ??
             f.properties?.PLANTA ??
             f.properties?.Altura ??
@@ -22,46 +23,184 @@ export default function HomePage() {
         )
         .filter((v) => v !== undefined && v !== null)
     );
-    // "0","1","2"...
     return Array.from(unicas).sort((a, b) => Number(a) - Number(b));
-    }, [data]);
+  }, [data]);
+
+  const espaciosFiltrados = useMemo(() => {
+    if (!data) return [];
+    return data.features.filter((f) => {
+      const props = f.properties || {};
+      const planta =
+        props.planta ?? props.PLANTA ?? props.Altura ?? props.altura ?? null;
+
+      if (plantaSeleccionada !== "" && plantaSeleccionada !== null) {
+        if (String(planta) !== String(plantaSeleccionada)) return false;
+      }
+
+      // aquí luego podrás añadir filtros de texto, categoría, capacidad…
+      return true;
+    });
+  }, [data, plantaSeleccionada]);
 
   return (
     <div className="home-root">
-      <header className="home-header">
-        <div>
-          <h1 className="home-title">ByronSpace</h1>
-          <p className="home-subtitle">
-            Mapa interactivo de espacios del edificio Ada Byron
-          </p>
+      {/* TOPBAR estilo app */}
+      <header className="home-topbar">
+        <div className="home-topbar-left">
+          <div className="home-logo-circle">B</div>
+          <div>
+            <h1 className="home-app-title">ByronSpace</h1>
+            <p className="home-app-subtitle">
+              Sistema de Reservas · Ada Byron
+            </p>
+          </div>
+        </div>
+        <div className="home-topbar-right">
+          <button className="home-topbar-link">Mis reservas</button>
+          <div className="home-user-circle">U</div>
         </div>
       </header>
 
       <div className="home-layout">
         {/* Panel lateral: filtros + detalle */}
         <aside className="home-sidebar">
-          <section className="card">
+          <section className="card card-filtros">
             <h2 className="card-title">Filtros</h2>
-            <label className="form-label" htmlFor="planta">
-              Planta
+
+            <label className="form-label" htmlFor="buscar">
+              Buscar
             </label>
-            <select
-              id="planta"
-              className="form-select"
-              value={plantaSeleccionada}
-              onChange={(e) => setPlantaSeleccionada(e.target.value)}
-            >
-              <option value="">Todas</option>
-              {plantas.map((planta) => (
-                <option key={planta} value={planta}>
-                  {`P${planta}`}
-                </option>
-              ))}
-            </select>
+            <div className="field-with-icon">
+                <FiSearch className="field-icon" />   {/* icono normal de lupa */}
+                <input
+                    id="buscar"
+                    className="form-input"
+                    placeholder="Nombre del espacio..."
+                />
+            </div>
+
+            <label className="form-label" htmlFor="categoria">
+              Categoría
+            </label>
+            <div className="field-select">
+              <select id="categoria" className="form-select">
+                <option>Todas las categorías</option>
+                <option>Laboratorio</option>
+                <option>Aula</option>
+                <option>Sala común</option>
+                <option>Despacho</option>
+                <option>Seminario</option>
+              </select>
+            </div>
+
+            <label className="form-label" htmlFor="capacidad">
+              Capacidad mínima
+            </label>
+            <div className="field-select">
+              <select id="capacidad" className="form-select">
+                <option>Cualquier capacidad</option>
+                <option>10+</option>
+                <option>20+</option>
+                <option>30+</option>
+              </select>
+            </div>
+
+            <div className="form-label form-label-inline">
+              <span>Planta</span>
+            </div>
+            <div className="plantas-chips">
+              {plantas.map((planta) => {
+                const value = String(planta);
+                const isActive = value === String(plantaSeleccionada) || (!plantaSeleccionada && value === "0");
+                return (
+                  <button
+                    key={planta}
+                    className={
+                      "planta-chip" + (isActive ? " planta-chip--active" : "")
+                    }
+                    onClick={() =>
+                      setPlantaSeleccionada(
+                        value === plantaSeleccionada ? "" : value
+                      )
+                    }
+                  >
+                    {`P${planta}`}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+                    <section className="card card-resultados">
+            <div className="resultados-header">
+              <h2 className="card-title">
+                Resultados ({espaciosFiltrados.length})
+              </h2>
+            </div>
+            <div className="resultados-list">
+              {espaciosFiltrados.map((f) => {
+                const e = f.properties || {};
+                const disponible = e.reservable !== false; // ajusta si tienes otro campo
+                return (
+                  <div
+                    key={e.id_espacio || e.gid}
+                    className="resultado-item"
+                  >
+                    <div
+                      className="resultado-click"
+                      onClick={() => setEspacioSeleccionado(e)}
+                    >
+                      <div className="resultado-header-line">
+                        <div className="resultado-nombre-uso">
+                          <div className="resultado-nombre">
+                            {e.nombre || e.id_espacio || "Espacio"}
+                          </div>
+                          <div className="resultado-uso">
+                            {e.uso || "Sin uso"}
+                          </div>
+                        </div>
+                        <span className="resultado-square" />
+                      </div>
+
+                      <div className="resultado-subinfo">
+                        <span className="resultado-personas-icon">👤</span>
+                        <span className="resultado-personas">
+                          {e.aforo ?? "N/D"} personas
+                        </span>
+                        <span className="resultado-dot">·</span>
+                        <span
+                          className={
+                            "resultado-estado-text " +
+                            (disponible
+                              ? "resultado-estado-disponible"
+                              : "resultado-estado-ocupado")
+                          }
+                        >
+                          {disponible ? "Disponible" : "Ocupado"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      className={
+                        "resultado-reservar-btn" +
+                        (disponible
+                          ? ""
+                          : " resultado-reservar-btn--disabled")
+                      }
+                      disabled={!disponible}
+                      onClick={() => disponible && setEspacioSeleccionado(e)}
+                    >
+                      Reservar
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </section>
 
           {espacioSeleccionado && (
-            <section className="card">
+            <section className="card card-detalle">
               <h2 className="detail-card-title">Espacio seleccionado</h2>
               <p className="detail-row">
                 <strong>Nombre:</strong>{" "}
@@ -82,6 +221,7 @@ export default function HomePage() {
                 <strong>Reservable:</strong>{" "}
                 {espacioSeleccionado.reservable ? "Sí" : "No"}
               </p>
+              <button className="btn-primary btn-full">Reservar</button>
             </section>
           )}
         </aside>
@@ -90,10 +230,17 @@ export default function HomePage() {
         <main className="home-main">
           <section className="map-card">
             <div className="map-header">
-              <h2 className="map-title">Mapa de espacios</h2>
-              <p className="map-subtitle">
-                Haz clic en un espacio para ver más detalles
-              </p>
+              <div>
+                <h2 className="map-title">
+                  Mapa del Edificio · Planta{" "}
+                  {plantaSeleccionada !== ""
+                    ? `P${plantaSeleccionada}`
+                    : "Todas"}
+                </h2>
+                <p className="map-subtitle">
+                  Haz clic en un espacio para ver más detalles y reservar
+                </p>
+              </div>
             </div>
 
             <div className="map-wrapper">
@@ -121,16 +268,16 @@ export default function HomePage() {
                 <span>Laboratorio</span>
               </div>
               <div className="legend-item">
-                <span className="legend-color legend-seminario" />
-                <span>Seminario</span>
+                <span className="legend-color legend-comun" />
+                <span>Sala común</span>
               </div>
               <div className="legend-item">
                 <span className="legend-color legend-despacho" />
                 <span>Despacho</span>
               </div>
               <div className="legend-item">
-                <span className="legend-color legend-comun" />
-                <span>Sala común</span>
+                <span className="legend-color legend-seminario" />
+                <span>Seminario</span>
               </div>
             </footer>
           </section>
