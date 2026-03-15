@@ -8,6 +8,9 @@ export default function HomePage() {
   const { data, loading, error } = useEspaciosGeo();
   const [plantaSeleccionada, setPlantaSeleccionada] = useState("");
   const [espacioSeleccionado, setEspacioSeleccionado] = useState(null);
+  const [textoBusqueda, setTextoBusqueda] = useState(""); 
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // <-- AÑADIDO
+
 
   const plantas = useMemo(() => {
     if (!data) return [];
@@ -28,19 +31,62 @@ export default function HomePage() {
 
   const espaciosFiltrados = useMemo(() => {
     if (!data) return [];
+    const filtroTexto = textoBusqueda.trim().toLowerCase();
+    const filtroCategoria = categoriaSeleccionada;
+
     return data.features.filter((f) => {
       const props = f.properties || {};
       const planta =
         props.planta ?? props.PLANTA ?? props.Altura ?? props.altura ?? null;
+      const uso = (props.uso || "").toLowerCase();
+      const nombre = (props.nombre || "").toLowerCase();
+      const idEspacio = (props.id_espacio || "").toLowerCase();
 
+      // 1) Filtro de planta
       if (plantaSeleccionada !== "" && plantaSeleccionada !== null) {
         if (String(planta) !== String(plantaSeleccionada)) return false;
       }
 
-      // aquí luego podrás añadir filtros de texto, categoría, capacidad…
+      // 2) Filtro de categoría (por uso)
+      if (filtroCategoria !== "todas") {
+        switch (filtroCategoria) {
+          case "laboratorio":
+            if (!uso.includes("laboratorio")) return false;
+            break;
+          case "aula":
+            if (!uso.includes("aula")) return false;
+            break;
+          case "comun":
+            if (!uso.includes("común") && !uso.includes("comun")) return false;
+            break;
+          case "despacho":
+            if (!uso.includes("despacho")) return false;
+            break;
+          case "seminario":
+            if (!uso.includes("seminario")) return false;
+            break;
+          case "pasillo":
+            if (!uso.includes("pasillo")) return false;
+            break;
+          default:
+            break;
+        }
+      }
+
+      // 3) Filtro de texto (nombre, id_espacio o uso)
+      if (filtroTexto) {
+        if (
+          !nombre.includes(filtroTexto) &&
+          !idEspacio.includes(filtroTexto) &&
+          !uso.includes(filtroTexto)
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [data, plantaSeleccionada]);
+  }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada]);
 
   return (
     <div className="home-root">
@@ -71,25 +117,33 @@ export default function HomePage() {
               Buscar
             </label>
             <div className="field-with-icon">
-                <FiSearch className="field-icon" />   {/* icono normal de lupa */}
-                <input
-                    id="buscar"
-                    className="form-input"
-                    placeholder="Nombre del espacio..."
-                />
+              <FiSearch className="field-icon" />   {/* icono normal de lupa */}
+              <input
+                id="buscar"
+                className="form-input"
+                placeholder="Nombre del espacio..."
+                value={textoBusqueda}
+                onChange={(e) => setTextoBusqueda(e.target.value)}
+              />
             </div>
 
             <label className="form-label" htmlFor="categoria">
               Categoría
             </label>
             <div className="field-select">
-              <select id="categoria" className="form-select">
-                <option>Todas las categorías</option>
-                <option>Laboratorio</option>
-                <option>Aula</option>
-                <option>Sala común</option>
-                <option>Despacho</option>
-                <option>Seminario</option>
+              <select
+                id="categoria"
+                className="form-select"
+                value={categoriaSeleccionada}
+                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+              >
+                <option value="todas">Todas las categorías</option>
+                <option value="laboratorio">Laboratorio</option>
+                <option value="aula">Aula</option>
+                <option value="comun">Sala común</option>
+                <option value="despacho">Despacho</option>
+                <option value="seminario">Seminario</option>
+                <option value="pasillo">Pasillo</option>
               </select>
             </div>
 
@@ -109,20 +163,25 @@ export default function HomePage() {
               <span>Planta</span>
             </div>
             <div className="plantas-chips">
+              <button
+                className={
+                  "planta-chip" + (plantaSeleccionada === "" ? " planta-chip--active" : "")
+                }
+                onClick={() => setPlantaSeleccionada("")}
+              >
+                Todas
+              </button>
+
               {plantas.map((planta) => {
                 const value = String(planta);
-                const isActive = value === String(plantaSeleccionada) || (!plantaSeleccionada && value === "0");
+                const isActive = value === String(plantaSeleccionada);
                 return (
                   <button
                     key={planta}
                     className={
                       "planta-chip" + (isActive ? " planta-chip--active" : "")
                     }
-                    onClick={() =>
-                      setPlantaSeleccionada(
-                        value === plantaSeleccionada ? "" : value
-                      )
-                    }
+                    onClick={() => setPlantaSeleccionada(value)}
                   >
                     {`P${planta}`}
                   </button>
@@ -131,7 +190,7 @@ export default function HomePage() {
             </div>
           </section>
 
-                    <section className="card card-resultados">
+          <section className="card card-resultados">
             <div className="resultados-header">
               <h2 className="card-title">
                 Resultados ({espaciosFiltrados.length})
@@ -251,7 +310,10 @@ export default function HomePage() {
 
               {data && (
                 <MapaEspacios
-                  geoData={data}
+                  geoData={{
+                    ...data,
+                    features: espaciosFiltrados, // <-- solo los filtrados
+                  }}
                   plantaSeleccionada={plantaSeleccionada}
                   onSeleccionarEspacio={setEspacioSeleccionado}
                 />
