@@ -290,6 +290,12 @@
   gap: 8px;
 }
 
+.resultado-item--selected {
+  border: 2px solid var(--accent);
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
 .resultado-click {
   cursor: pointer;
 }
@@ -458,6 +464,8 @@
 .legend-seminario { background: #facc15; }
 .legend-despacho { background: #ef4444; }
 .legend-comun { background: #22c55e; }
+.legend-pasillo { background: #8b5cf6; }
+.legend-otros { background: #9ca3af; }
 
 /* Leaflet */
 

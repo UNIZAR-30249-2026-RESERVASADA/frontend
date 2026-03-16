@@ -1,15 +1,38 @@
 import { useMemo, useState } from "react";
 import { useEspaciosGeo } from "../hooks/useEspaciosGeo";
 import MapaEspacios from "../components/MapaEspacios";
-import { FiSearch } from "react-icons/fi";  
+import { FiSearch, FiInfo } from "react-icons/fi";  
 import "./HomePage.css";
+
+// Función para obtener color según categoría (ahora usa el campo categoria)
+function colorPorCategoria(categoria) {
+  const valor = (categoria || "").toLowerCase();
+
+  if (
+    valor.includes("laboratorio") ||
+    valor.includes("lab") ||
+    valor.includes("informática") ||
+    valor.includes("informatica") ||
+    valor.includes("sala informatica")
+  ) {
+    return "#3b82f6"; // azul para labs + salas informáticas
+  }  
+  if (valor.includes("despacho")) return "#ef4444";
+  if (valor.includes("seminario")) return "#facc15";
+  if (valor.includes("aula")) return "#f59e0b";
+  if (valor.includes("común") || valor.includes("comun")) return "#22c55e";
+  if (valor.includes("pasillo")) return "#8b5cf6"; // púrpura para pasillos
+  
+  return "#9ca3af"; // gris claro para otros/sin clasificar
+}
 
 export default function HomePage() {
   const { data, loading, error } = useEspaciosGeo();
   const [plantaSeleccionada, setPlantaSeleccionada] = useState("");
   const [espacioSeleccionado, setEspacioSeleccionado] = useState(null);
   const [textoBusqueda, setTextoBusqueda] = useState(""); 
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // <-- AÑADIDO
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
+  const [mostrarTooltip, setMostrarTooltip] = useState(false);
 
 
   const plantas = useMemo(() => {
@@ -27,18 +50,17 @@ export default function HomePage() {
         .filter((v) => v !== undefined && v !== null)
     );
     return Array.from(unicas).sort((a, b) => Number(a) - Number(b));
-  }, [data]);
-
-  const espaciosFiltrados = useMemo(() => {
+  }, [data]);  const espaciosFiltrados = useMemo(() => {
     if (!data) return [];
     const filtroTexto = textoBusqueda.trim().toLowerCase();
     const filtroCategoria = categoriaSeleccionada;
 
-    return data.features.filter((f) => {
+    console.log("FILTRO APLICADO:", { filtroCategoria, textoBusqueda }); // <-- DEBUG
+    const resultado = data.features.filter((f) => {
       const props = f.properties || {};
       const planta =
         props.planta ?? props.PLANTA ?? props.Altura ?? props.altura ?? null;
-      const uso = (props.uso || "").toLowerCase();
+      const categoria = (props.categoria || "").toLowerCase();
       const nombre = (props.nombre || "").toLowerCase();
       const idEspacio = (props.id_espacio || "").toLowerCase();
 
@@ -47,38 +69,48 @@ export default function HomePage() {
         if (String(planta) !== String(plantaSeleccionada)) return false;
       }
 
-      // 2) Filtro de categoría (por uso)
+      // 2) Filtro de categoría (por categoria, no por uso)
       if (filtroCategoria !== "todas") {
+        let categoriaValida = false;
+        
         switch (filtroCategoria) {
           case "laboratorio":
-            if (!uso.includes("laboratorio")) return false;
+            categoriaValida =
+              categoria.includes("laboratorio") ||
+              categoria.includes("lab") ||
+              categoria.includes("informática") ||
+              categoria.includes("informatica") ||
+              categoria.includes("sala informatica");
             break;
           case "aula":
-            if (!uso.includes("aula")) return false;
+            categoriaValida = categoria.includes("aula");
             break;
           case "comun":
-            if (!uso.includes("común") && !uso.includes("comun")) return false;
+            categoriaValida = categoria.includes("común") || categoria.includes("comun");
             break;
           case "despacho":
-            if (!uso.includes("despacho")) return false;
+            categoriaValida = categoria.includes("despacho");
             break;
           case "seminario":
-            if (!uso.includes("seminario")) return false;
+            categoriaValida = categoria.includes("seminario");
             break;
           case "pasillo":
-            if (!uso.includes("pasillo")) return false;
+            categoriaValida = categoria.includes("pasillo");
             break;
           default:
+            categoriaValida = false;
             break;
         }
+        
+        if (!categoriaValida) return false;
       }
 
-      // 3) Filtro de texto (nombre, id_espacio o uso)
+      // 3) Filtro de texto (nombre, id_espacio o categoria)
       if (filtroTexto) {
         if (
           !nombre.includes(filtroTexto) &&
           !idEspacio.includes(filtroTexto) &&
-          !uso.includes(filtroTexto)
+          !categoria.includes(filtroTexto)
         ) {
           return false;
         }
@@ -86,6 +118,16 @@ export default function HomePage() {
 
       return true;
     });
+
+    // DEBUG: log los espacios cuando hay filtro de categoría
+    if (filtroCategoria !== "todas") {
+      console.log(
+        `DEBUG filtroCategoria=${filtroCategoria}, resultados=${resultado.length}`,
+        resultado.map((f) => ({ id: f.properties?.id_espacio, uso: f.properties?.uso }))
+      );
+    }
+
+    return resultado;
   }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada]);
 
   return (
@@ -109,9 +151,50 @@ export default function HomePage() {
 
       <div className="home-layout">
         {/* Panel lateral: filtros + detalle */}
-        <aside className="home-sidebar">
-          <section className="card card-filtros">
-            <h2 className="card-title">Filtros</h2>
+        <aside className="home-sidebar">          <section className="card card-filtros">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <h2 className="card-title">Filtros</h2>
+              <div style={{ position: 'relative' }}>
+                <button 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    color: '#2563eb'
+                  }}
+                  onClick={() => setMostrarTooltip(!mostrarTooltip)}
+                  title="Información sobre Uso vs Categoría"
+                >
+                  <FiInfo />
+                </button>
+                
+                {mostrarTooltip && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '28px',
+                    right: '0',
+                    backgroundColor: '#1e40af',
+                    color: '#ffffff',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    width: '200px',
+                    zIndex: 1000,
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    lineHeight: '1.5'
+                  }}>
+                    <strong style={{ display: 'block', marginBottom: '5px' }}>Uso vs Categoría:</strong>
+                    <div style={{ marginBottom: '5px' }}>
+                      <strong>Uso:</strong> Original del espacio (fijo)
+                    </div>
+                    <div>
+                      <strong>Categoría:</strong> Clasificación actual (modificable)
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <label className="form-label" htmlFor="buscar">
               Buscar
@@ -188,37 +271,52 @@ export default function HomePage() {
                 );
               })}
             </div>
-          </section>
-
-          <section className="card card-resultados">
+          </section>          
+          <section className="card card-resultados" key={`resultados-${categoriaSeleccionada}-${plantaSeleccionada}-${textoBusqueda}`}>
             <div className="resultados-header">
               <h2 className="card-title">
                 Resultados ({espaciosFiltrados.length})
               </h2>
-            </div>
-            <div className="resultados-list">
+            </div><div className="resultados-list">
               {espaciosFiltrados.map((f) => {
                 const e = f.properties || {};
                 const disponible = e.reservable !== false; // ajusta si tienes otro campo
+                const isSelected = espacioSeleccionado?.id_espacio === e.id_espacio || espacioSeleccionado?.gid === e.gid;
                 return (
                   <div
-                    key={e.id_espacio || e.gid}
-                    className="resultado-item"
+                    key={`${categoriaSeleccionada}-${plantaSeleccionada}-${e.id_espacio || e.gid}`}
+                    className={`resultado-item ${isSelected ? 'resultado-item--selected' : ''}`}
+                    ref={isSelected ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) : null}
                   >
                     <div
                       className="resultado-click"
-                      onClick={() => setEspacioSeleccionado(e)}
-                    >
-                      <div className="resultado-header-line">
+                      onClick={() => {
+                        // Si ya está seleccionado, deseleccionar; si no, seleccionar
+                        if (isSelected) {
+                          setEspacioSeleccionado(null);
+                        } else {
+                          setEspacioSeleccionado(e);
+                        }
+                      }}
+                    >                      <div className="resultado-header-line">
                         <div className="resultado-nombre-uso">
                           <div className="resultado-nombre">
                             {e.nombre || e.id_espacio || "Espacio"}
+                          </div>                          <div className="resultado-uso">
+                            <div style={{ fontSize: '11px', color: '#666', marginBottom: '2px' }}>
+                              Uso: {e.uso || "N/D"}
+                            </div>
+                            {e.categoria && (
+                              <div style={{ fontSize: '11px', color: colorPorCategoria(e.categoria), fontWeight: '500' }}>
+                                Cat: {e.categoria}
+                              </div>
+                            )}
                           </div>
-                          <div className="resultado-uso">
-                            {e.uso || "Sin uso"}
-                          </div>
-                        </div>
-                        <span className="resultado-square" />
+                        </div>                        
+                        <span 
+                          className="resultado-square"
+                          style={{ backgroundColor: colorPorCategoria(e.categoria) }}
+                        />
                       </div>
 
                       <div className="resultado-subinfo">
@@ -257,32 +355,6 @@ export default function HomePage() {
               })}
             </div>
           </section>
-
-          {espacioSeleccionado && (
-            <section className="card card-detalle">
-              <h2 className="detail-card-title">Espacio seleccionado</h2>
-              <p className="detail-row">
-                <strong>Nombre:</strong>{" "}
-                {espacioSeleccionado.nombre || "N/D"}
-              </p>
-              <p className="detail-row">
-                <strong>ID:</strong>{" "}
-                {espacioSeleccionado.id_espacio || "N/D"}
-              </p>
-              <p className="detail-row">
-                <strong>Uso:</strong> {espacioSeleccionado.uso || "N/D"}
-              </p>
-              <p className="detail-row">
-                <strong>Planta:</strong>{" "}
-                {espacioSeleccionado.planta || "N/D"}
-              </p>
-              <p className="detail-row">
-                <strong>Reservable:</strong>{" "}
-                {espacioSeleccionado.reservable ? "Sí" : "No"}
-              </p>
-              <button className="btn-primary btn-full">Reservar</button>
-            </section>
-          )}
         </aside>
 
         {/* Contenido principal: mapa + leyenda */}
@@ -306,8 +378,7 @@ export default function HomePage() {
               {loading && (
                 <div className="map-overlay">Cargando espacios…</div>
               )}
-              {error && <div className="map-overlay">{error}</div>}
-
+              {error && <div className="map-overlay">{error}</div>}              
               {data && (
                 <MapaEspacios
                   geoData={{
@@ -316,11 +387,10 @@ export default function HomePage() {
                   }}
                   plantaSeleccionada={plantaSeleccionada}
                   onSeleccionarEspacio={setEspacioSeleccionado}
+                  espacioSeleccionado={espacioSeleccionado}
                 />
               )}
-            </div>
-
-            <footer className="legend">
+            </div>            <footer className="legend">
               <div className="legend-item">
                 <span className="legend-color legend-aula" />
                 <span>Aula</span>
@@ -340,6 +410,14 @@ export default function HomePage() {
               <div className="legend-item">
                 <span className="legend-color legend-seminario" />
                 <span>Seminario</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-color legend-pasillo" />
+                <span>Pasillo</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-color legend-otros" />
+                <span>Otros</span>
               </div>
             </footer>
           </section>
