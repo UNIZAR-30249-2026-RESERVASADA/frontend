@@ -298,7 +298,8 @@ export default function HomePage() {
                           setEspacioSeleccionado(e);
                         }
                       }}
-                    >                      <div className="resultado-header-line">
+                    >                      
+                    <div className="resultado-header-line">
                         <div className="resultado-nombre-uso">
                           <div className="resultado-nombre">
                             {e.nombre || e.id_espacio || "Espacio"}
