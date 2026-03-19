@@ -1,7 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useEspaciosGeo } from "../hooks/useEspaciosGeo";
+import { useAuth } from "../hooks/useAuth";
+import { useRestriccionesReserva } from "../hooks/useRestriccionesReserva";
 import MapaEspacios from "../components/MapaEspacios";
-import { FiSearch, FiInfo } from "react-icons/fi";  
+import { FiSearch, FiInfo, FiLogOut } from "react-icons/fi";  
+import { useNavigate } from "react-router-dom";
+import unizarLogo from "../assets/images/unizar.png";
 import "./HomePage.css";
 
 // Función para obtener color según categoría (ahora usa el campo categoria)
@@ -26,17 +30,61 @@ function colorPorCategoria(categoria) {
   return "#9ca3af"; // gris claro para otros/sin clasificar
 }
 
-export default function HomePage() {
+export default function HomePage() {  const navigate = useNavigate();
   const { data, loading, error } = useEspaciosGeo();
+  const { usuario, loading: authLoading, logout } = useAuth();
+  const { restricciones } = useRestriccionesReserva(usuario?.rol);
+  
   const [plantaSeleccionada, setPlantaSeleccionada] = useState("");
   const [espacioSeleccionado, setEspacioSeleccionado] = useState(null);
   const [textoBusqueda, setTextoBusqueda] = useState(""); 
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [mostrarTooltip, setMostrarTooltip] = useState(false);
 
+  // Redirigir a login si no hay usuario (esperar a que authLoading sea false)
+  useEffect(() => {
+    if (authLoading) {
+      // Aún cargando, no hacer nada
+      return;
+    }
 
+    if (!usuario) {
+      console.log("HomePage: usuario no está, redirigiendo a login");
+      navigate("/login", { replace: true });
+    } else {
+      console.log("HomePage: usuario presente:", usuario.nombre);
+    }
+  }, [usuario, authLoading, navigate]);
+  // Función para verificar si el usuario puede reservar un espacio según su rol
+  // (solo para UI, la verdadera validación está en el backend)
+  const puedeReservar = (espacio) => {
+    if (!restricciones || !restricciones.puedereservar) return false;
+
+    const categoria = (espacio.categoria || "").toLowerCase();
+    const rol = usuario?.rol?.toLowerCase();
+
+    // Validación básica de categoría
+    const tieneCategoria = restricciones.puedereservar.some(cat => categoria.includes(cat));
+    
+    if (!tieneCategoria) return false;
+
+    // Para laboratorios, validar departamento (si aplica)
+    if (categoria.includes("laboratorio")) {
+      // Si la restricción menciona "solo de tu dpto", verificar departamento
+      if (restricciones.mensaje.includes("solo de tu dpto")) {
+        return usuario?.departamentoId === espacio.departamentoId;
+      }
+    }
+
+    return true;
+  };
+
+  // Obtener mensaje de restricción desde el backend
+  const getRestriccionesTexto = () => {
+    return restricciones?.mensaje || "Cargando permisos...";
+  };
   const plantas = useMemo(() => {
-    if (!data) return [];
+    if (!data || !data.features) return [];
     const unicas = new Set(
       data.features
         .map(
@@ -50,7 +98,9 @@ export default function HomePage() {
         .filter((v) => v !== undefined && v !== null)
     );
     return Array.from(unicas).sort((a, b) => Number(a) - Number(b));
-  }, [data]);  const espaciosFiltrados = useMemo(() => {
+  }, [data]);
+
+  const espaciosFiltrados = useMemo(() => {
     if (!data) return [];
     const filtroTexto = textoBusqueda.trim().toLowerCase();
     const filtroCategoria = categoriaSeleccionada;
@@ -129,13 +179,20 @@ export default function HomePage() {
 
     return resultado;
   }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada]);
+  // Si aún está cargando la autenticación, no renderizar nada
+  if (authLoading) {
+    return null;
+  }
+
+  // Si no hay usuario, no renderizar nada (el useEffect redirige a login)
+  if (!usuario) {
+    return null;
+  }
 
   return (
-    <div className="home-root">
-      {/* TOPBAR estilo app */}
-      <header className="home-topbar">
+    <div className="home-root">{/* TOPBAR estilo app */}      <header className="home-topbar">
         <div className="home-topbar-left">
-          <div className="home-logo-circle">B</div>
+          <img src={unizarLogo} alt="Universidad Zaragoza" className="home-logo-img" />
           <div>
             <h1 className="home-app-title">ByronSpace</h1>
             <p className="home-app-subtitle">
@@ -145,7 +202,25 @@ export default function HomePage() {
         </div>
         <div className="home-topbar-right">
           <button className="home-topbar-link">Mis reservas</button>
-          <div className="home-user-circle">U</div>
+          <div className="home-user-info">
+            <div className="home-user-details">
+              <div className="home-user-name">{usuario?.nombre || "Usuario"}</div>
+              <div className="home-user-role">{usuario?.rol || "Sin rol"}</div>
+            </div>
+            <div className="home-user-circle">
+              {(usuario?.nombre || "U").charAt(0).toUpperCase()}
+            </div>
+          </div>
+          <button
+            className="home-topbar-logout"
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
+            title="Cerrar sesión"
+          >
+            <FiLogOut size={18} />
+          </button>
         </div>
       </header>
 
@@ -193,6 +268,22 @@ export default function HomePage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Mostrar restricciones de usuario */}
+            <div style={{
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fcd34d',
+              borderRadius: '6px',
+              padding: '8px 10px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              color: '#92400e',
+            }}>
+              <strong>Tu rol: {usuario?.rol || "Sin rol"}</strong>
+              <div style={{ marginTop: '4px' }}>
+                {getRestriccionesTexto()}
               </div>
             </div>
 
@@ -277,7 +368,8 @@ export default function HomePage() {
               <h2 className="card-title">
                 Resultados ({espaciosFiltrados.length})
               </h2>
-            </div><div className="resultados-list">
+            </div>
+            <div className="resultados-list">
               {espaciosFiltrados.map((f) => {
                 const e = f.properties || {};
                 const disponible = e.reservable !== false; // ajusta si tienes otro campo
@@ -337,17 +429,24 @@ export default function HomePage() {
                           {disponible ? "Disponible" : "Ocupado"}
                         </span>
                       </div>
-                    </div>
-
-                    <button
+                    </div>                    <button
                       className={
                         "resultado-reservar-btn" +
-                        (disponible
+                        (disponible && puedeReservar(e)
                           ? ""
                           : " resultado-reservar-btn--disabled")
                       }
-                      disabled={!disponible}
-                      onClick={() => disponible && setEspacioSeleccionado(e)}
+                      disabled={!disponible || !puedeReservar(e)}
+                      title={!puedeReservar(e) ? "Tu rol no permite reservar este tipo de espacio" : ""}
+                      onClick={() => {
+                        if (disponible && puedeReservar(e)) {
+                          const espacioParaReserva = {
+                            gid: f.id || e.gid,
+                            ...e,
+                          };
+                          navigate("/reserva", { state: { espacio: espacioParaReserva } });
+                        }
+                      }}
                     >
                       Reservar
                     </button>
