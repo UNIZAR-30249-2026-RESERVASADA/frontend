@@ -54,29 +54,55 @@ export default function HomePage() {  const navigate = useNavigate();
     } else {
       console.log("HomePage: usuario presente:", usuario.nombre);
     }
-  }, [usuario, authLoading, navigate]);
+  }, [usuario, authLoading, navigate]);  
+  
   // Función para verificar si el usuario puede reservar un espacio según su rol
-  // (solo para UI, la verdadera validación está en el backend)
+  // Usa la misma lógica que ReservaPolicy del backend
   const puedeReservar = (espacio) => {
-    if (!restricciones || !restricciones.puedereservar) return false;
+    if (!usuario) return false;
 
     const categoria = (espacio.categoria || "").toLowerCase();
     const rol = usuario?.rol?.toLowerCase();
 
-    // Validación básica de categoría
-    const tieneCategoria = restricciones.puedereservar.some(cat => categoria.includes(cat));
-    
-    if (!tieneCategoria) return false;
-
-    // Para laboratorios, validar departamento (si aplica)
-    if (categoria.includes("laboratorio")) {
-      // Si la restricción menciona "solo de tu dpto", verificar departamento
-      if (restricciones.mensaje.includes("solo de tu dpto")) {
-        return usuario?.departamentoId === espacio.departamentoId;
+    // Lógica de ReservaPolicy (duplicada del backend pero para UI)
+    if (rol === "estudiante") {
+      return categoria.includes("sala común");
+    }    if (rol === "investigador_contratado" || rol === "docente_investigador") {
+      if (categoria.includes("laboratorio") || categoria.includes("despacho")) {
+        // Solo su departamento (no de EINA)
+        if (!espacio.departamentoId) return false;
+        return String(usuario?.departamentoId) === String(espacio.departamentoId);
       }
+      return categoria.includes("aula") || categoria.includes("seminario") || categoria.includes("sala común");
     }
 
-    return true;
+    if (rol === "tecnico_laboratorio") {
+      if (categoria.includes("laboratorio")) {
+        // Solo su departamento (no de EINA)
+        if (!espacio.departamentoId) return false;
+        return String(usuario?.departamentoId) === String(espacio.departamentoId);
+      }
+      return false;
+    }
+
+    if (rol === "conserje") {
+      return categoria.includes("aula") || categoria.includes("seminario") || categoria.includes("sala común");
+    }
+
+    if (rol === "investigador_visitante") {
+      if (categoria.includes("laboratorio")) {
+        // Solo su departamento (no de EINA)
+        if (!espacio.departamentoId) return false;
+        return String(usuario?.departamentoId) === String(espacio.departamentoId);
+      }
+      return categoria.includes("aula") || categoria.includes("seminario") || categoria.includes("sala común");
+    }
+
+    if (rol === "gerente") {
+      return true;
+    }
+
+    return false;
   };
 
   // Obtener mensaje de restricción desde el backend
@@ -179,6 +205,7 @@ export default function HomePage() {  const navigate = useNavigate();
 
     return resultado;
   }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada]);
+
   // Si aún está cargando la autenticación, no renderizar nada
   if (authLoading) {
     return null;
