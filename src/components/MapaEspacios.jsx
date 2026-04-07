@@ -1,27 +1,7 @@
 import L from "leaflet";
 import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
 import React, { useEffect } from "react";
-
-function colorPorCategoria(categoria) {
-  const valor = (categoria || "").toLowerCase();
-
-  if (
-    valor.includes("laboratorio") ||
-    valor.includes("lab") ||
-    valor.includes("informática") ||
-    valor.includes("informatica") ||
-    valor.includes("sala informatica")
-  ) {
-    return "#3b82f6"; // azul para labs + salas informáticas
-  }  
-  if (valor.includes("despacho")) return "#ef4444";
-  if (valor.includes("seminario")) return "#facc15";
-  if (valor.includes("aula")) return "#f59e0b";
-  if (valor.includes("común") || valor.includes("comun")) return "#22c55e";
-  if (valor.includes("pasillo")) return "#8b5cf6"; // púrpura para pasillos
-  
-  return "#9ca3af"; // gris claro para otros/sin clasificar
-}
+import { colorPorCategoria } from "../utils/coloresEspacio";
 
 function AjustarAlGeoJSON({ data }) {
   const map = useMap();
@@ -35,16 +15,15 @@ function AjustarAlGeoJSON({ data }) {
   return null;
 }
 
-// Nuevo componente para centrar y abrir popup
 function CentrarEnEspacio({ espacioSeleccionado, featuresFiltradas, layersRef }) {
   const map = useMap();
+
   React.useEffect(() => {
     if (espacioSeleccionado && map && featuresFiltradas) {
-      const id = espacioSeleccionado.id_espacio || espacioSeleccionado.gid;
+      const id    = espacioSeleccionado.id_espacio || espacioSeleccionado.gid;
       const layer = layersRef.current[id];
 
       if (layer && featuresFiltradas.features) {
-        // Buscar el feature para obtener sus coordenadas
         const feature = featuresFiltradas.features.find(
           (f) => (f.properties?.id_espacio || f.properties?.gid) === id
         );
@@ -60,19 +39,12 @@ function CentrarEnEspacio({ espacioSeleccionado, featuresFiltradas, layersRef })
               [feature.geometry.coordinates[1], feature.geometry.coordinates[0]],
             ]);
           }
-
-          if (bounds) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-          }
+          if (bounds) map.fitBounds(bounds, { padding: [50, 50] });
         }
 
-        // Abrir el popup
-        setTimeout(() => {
-          layer.openPopup();
-        }, 300);
+        setTimeout(() => layer.openPopup(), 300);
       }
     } else if (!espacioSeleccionado && map) {
-      // Si se deselecciona, cerrar todos los popups
       map.closePopup();
     }
   }, [espacioSeleccionado, featuresFiltradas, map, layersRef]);
@@ -82,33 +54,30 @@ function CentrarEnEspacio({ espacioSeleccionado, featuresFiltradas, layersRef })
 
 export default function MapaEspacios({
   geoData,
-  plantaSeleccionada, // solo para el título del mapa si quieres, NO filtramos aquí
+  plantaSeleccionada,
   onSeleccionarEspacio,
-  espacioSeleccionado, // nuevo prop para detectar cambios
+  espacioSeleccionado,
 }) {
-
-  // IMPORTANTE: geoData YA viene filtrado desde HomePage (planta + texto + categoría)
   const featuresFiltradas = geoData || null;
-  const mapRef = React.useRef(null);
   const layersRef = React.useRef({});
+
   const style = (feature) => ({
-    color: colorPorCategoria(feature.properties?.categoria),
-    weight: 2,
+    color:       colorPorCategoria(feature.properties?.categoria),
+    weight:      2,
     fillOpacity: 0.6,
-  });  
-  
+  });
+
   const onEachFeature = (feature, layer) => {
     const props = feature.properties || {};
-    const id = props.id_espacio || props.gid;
-    
-    // Guardar referencia del layer por ID para poder abrirlo después
+    const id    = props.id_espacio || props.gid;
+
     layersRef.current[id] = layer;
 
-    const titulo = props.nombre || props.id_espacio || "Espacio";
-    const uso = props.uso || "Sin uso";
-    const categoria = props.categoria || "Sin categoría";
-    const planta = props.planta || "Sin planta";
-    const aforo = props.aforo ?? "N/D";
+    const titulo     = props.nombre || props.id_espacio || "Espacio";
+    const uso        = props.uso        || "Sin uso";
+    const categoria  = props.categoria  || "Sin categoría";
+    const planta     = props.planta     || "Sin planta";
+    const aforo      = props.aforo      ?? "N/D";
     const reservable = props.reservable ? "Sí" : "No";
 
     layer.bindPopup(`
@@ -121,27 +90,23 @@ export default function MapaEspacios({
         Aforo: ${aforo}<br/>
         Reservable: ${reservable}
       </div>
-    `);    
-    
-    layer.on("click", (e) => {
-      // Comprobar si ya está seleccionado
-      if (layersRef.current.selectedLayerId === (props.id_espacio || props.gid)) {
-        // Si ya está seleccionado, deseleccionar
+    `);
+
+    layer.on("click", () => {
+      if (layersRef.current.selectedLayerId === id) {
         onSeleccionarEspacio?.(null);
         layer.closePopup();
         layersRef.current.selectedLayerId = null;
       } else {
-        // Si no está seleccionado, seleccionar
         onSeleccionarEspacio?.(props);
-        layersRef.current.selectedLayerId = props.id_espacio || props.gid;
+        layersRef.current.selectedLayerId = id;
         setTimeout(() => layer.openPopup(), 0);
       }
     });
   };
-  
-  // key hace que el GeoJSON se recree cuando cambian las features filtradas
+
   const geoKey =
-    featuresFiltradas && featuresFiltradas.features
+    featuresFiltradas?.features
       ? featuresFiltradas.features
           .map((f) => f.properties?.id_espacio || f.properties?.gid)
           .join("|")
@@ -167,7 +132,7 @@ export default function MapaEspacios({
             onEachFeature={onEachFeature}
           />
           <AjustarAlGeoJSON data={featuresFiltradas} />
-          <CentrarEnEspacio 
+          <CentrarEnEspacio
             espacioSeleccionado={espacioSeleccionado}
             featuresFiltradas={featuresFiltradas}
             layersRef={layersRef}
