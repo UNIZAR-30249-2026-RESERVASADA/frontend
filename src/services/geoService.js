@@ -1,7 +1,12 @@
-const GEO_BASE_URL = "http://localhost:5000";
+const GEO_BASE_URL = "http://localhost:3000/api/geo";
 
+/**
+ * Obtiene los espacios geográficos del edificio Ada Byron.
+ * Llama al gateway (N2) que hace de proxy hacia PyGeoAPI (N3).
+ * El frontend nunca accede directamente a PyGeoAPI.
+ */
 export async function obtenerEspacios() {
-  let url = `${GEO_BASE_URL}/collections/espacios/items?f=json&limit=1000`;
+  let url = `${GEO_BASE_URL}/espacios?f=json&limit=1000`;
   let todasLasFeatures = [];
   let primeraRespuesta = null;
 
@@ -9,7 +14,7 @@ export async function obtenerEspacios() {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error("No se pudieron cargar los espacios desde PyGeoAPI");
+      throw new Error("No se pudieron cargar los espacios geográficos");
     }
 
     const data = await response.json();
