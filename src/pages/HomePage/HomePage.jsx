@@ -53,6 +53,10 @@ export default function HomePage() {
   };
 
   const getRestriccionesLineas = () => {
+    if (usuario?.esGerente) return [
+      "Rol: gerente",
+      "Puedes reservar siempre: todo lo que esté marcado como reservable",
+    ];
     if (!usuario?.rol) return ["Sin permisos definidos"];
     const rol      = usuario.rol.toLowerCase();
     const libres   = categoriasLibres(rol);
