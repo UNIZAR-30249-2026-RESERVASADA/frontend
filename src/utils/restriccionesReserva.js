@@ -13,25 +13,15 @@ const CATEGORIAS_CON_RESTRICCION_DPTO = {
   investigador_contratado: ["laboratorio", "despacho"],
   docente_investigador:    ["laboratorio", "despacho"],
   tecnico_laboratorio:     ["laboratorio"],
-  investigador_visitante:  ["laboratorio"],
+  investigador_visitante:  ["laboratorio", "despacho"],
   conserje:                [],
   gerente:                 [],
 };
 
-/**
- * Devuelve las categorías que el rol puede reservar sin restricción de departamento.
- * @param {string} rol
- * @returns {string[]}
- */
 export function categoriasLibres(rol) {
   return CATEGORIAS_LIBRES[(rol || "").toLowerCase()] || [];
 }
 
-/**
- * Devuelve las categorías que requieren coincidir en departamento.
- * @param {string} rol
- * @returns {string[]}
- */
 export function categoriasConRestriccionDepartamento(rol) {
   return CATEGORIAS_CON_RESTRICCION_DPTO[(rol || "").toLowerCase()] || [];
 }
@@ -39,10 +29,14 @@ export function categoriasConRestriccionDepartamento(rol) {
 /**
  * Dado un espacio y el usuario autenticado, determina si el usuario
  * puede intentar reservarlo (feedback visual en el mapa).
- * La validación real la hace el backend — esto es solo para la UI.
  *
- * @param {{ categoria: string, departamentoId: string|null }} espacio
- * @param {{ rol: string, departamentoId: string|null }} usuario
+ * @param {{
+ *   categoria: string,
+ *   departamentoId: string|null,
+ *   usuariosAsignados: Array<{id, nombre, rol}>,
+ *   asignadoAEina: boolean
+ * }} espacio
+ * @param {{ rol: string, departamentoId: string|null, id: number }} usuario
  * @returns {{ puede: boolean, motivo: string|null }}
  */
 export function puedeReservarEspacio(espacio, usuario) {
@@ -54,8 +48,8 @@ export function puedeReservarEspacio(espacio, usuario) {
 
   if (rol === "gerente") return { puede: true, motivo: null };
 
-  const libres      = categoriasLibres(rol);
-  const conDpto     = categoriasConRestriccionDepartamento(rol);
+  const libres  = categoriasLibres(rol);
+  const conDpto = categoriasConRestriccionDepartamento(rol);
 
   if (libres.includes(categoria)) {
     return { puede: true, motivo: null };
@@ -67,9 +61,44 @@ export function puedeReservarEspacio(espacio, usuario) {
       espacio.departamentoId &&
       String(usuario.departamentoId) === String(espacio.departamentoId);
 
+    if (categoria === "despacho") {
+      const usuariosAsignados = espacio.usuariosAsignados ?? [];
+      const tieneUsuarios     = usuariosAsignados.length > 0;
+      const hayVisitante      = usuariosAsignados.some((u) => u.rol === "investigador_visitante");
+
+      // Investigador visitante — solo puede reservar si está asignado a él
+      if (rol === "investigador_visitante") {
+        const estaAsignado = usuariosAsignados.some((u) => String(u.id) === String(usuario.id));
+        if (estaAsignado) return { puede: true, motivo: null };
+        return { puede: false, motivo: "Este despacho no está asignado a ti" };
+      }
+
+      // O3: asignado a departamento (sin usuarios) — mismo departamento
+      if (!tieneUsuarios && mismoDepto) return { puede: true, motivo: null };
+
+      // O7: asignado a investigador visitante — mismo departamento
+      if (tieneUsuarios && hayVisitante && mismoDepto) return { puede: true, motivo: null };
+
+      // Asignado a persona que no es visitante — no reservable
+      if (tieneUsuarios && !hayVisitante) {
+        return { puede: false, motivo: "Este despacho está asignado a una persona y no es reservable" };
+      }
+
+      if (!mismoDepto) {
+        return { puede: false, motivo: `Rol: ${usuario.rol} · Los despachos solo son reservables si son de tu departamento` };
+      }
+    }
+
     if (mismoDepto) return { puede: true, motivo: null };
-    return { puede: false, motivo: "Solo disponible para tu departamento" };
+
+    return {
+      puede: false,
+      motivo: `Rol: ${usuario.rol}${usuario.departamentoId ? ` · Solo puedes reservar ${categoria} de tu departamento` : ""}`,
+    };
   }
 
-  return { puede: false, motivo: `Tu rol no puede reservar ${categoria}` };
+  return {
+    puede: false,
+    motivo: `Rol: ${usuario.rol} · Puedes reservar: ${libres.join(", ")}${conDpto.length > 0 ? ` · Con restricción de dpto: ${conDpto.join(", ")}` : ""}`,
+  };
 }

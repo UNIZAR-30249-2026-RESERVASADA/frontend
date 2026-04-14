@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiLogOut, FiCalendar, FiClock, FiUsers, FiMapPin } from "react-icons/fi";
+import { FiLogOut, FiCalendar, FiClock, FiUsers, FiMapPin, FiChevronDown, FiChevronUp, FiX } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
 import { getMisReservas, cancelarReserva } from "../../services/reservasService";
 import { obtenerMetadatosEspacios } from "../../services/espaciosBackendService";
@@ -9,10 +9,10 @@ import unizarLogo from "../../assets/images/unizar.png";
 import "./ReservasPage.css";
 
 const ESTADO_COLORES = {
-  aceptada:   { bg: "#dcfce7", text: "#166534", label: "Activa" },
-  cancelada:  { bg: "#fee2e2", text: "#991b1b", label: "Cancelada" },
-  finalizada: { bg: "#f3f4f6", text: "#6b7280", label: "Finalizada" },
-  rechazada:  { bg: "#fef3c7", text: "#92400e", label: "Rechazada" },
+  aceptada:   { bg: "#dcfce7", text: "#166534", label: "Activa",     dot: "#16a34a" },
+  cancelada:  { bg: "#fee2e2", text: "#991b1b", label: "Cancelada",  dot: "#dc2626" },
+  finalizada: { bg: "#f1f5f9", text: "#475569", label: "Finalizada", dot: "#94a3b8" },
+  rechazada:  { bg: "#fef3c7", text: "#92400e", label: "Rechazada",  dot: "#f59e0b" },
 };
 
 const FILTROS = ["todas", "aceptada", "cancelada", "finalizada"];
@@ -20,11 +20,12 @@ const FILTROS = ["todas", "aceptada", "cancelada", "finalizada"];
 export default function ReservasPage() {
   const navigate            = useNavigate();
   const { usuario, logout } = useAuth();
-  const [reservas,   setReservas]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState("");
-  const [filtro,     setFiltro]     = useState("todas");
-  const [cancelando, setCancelando] = useState(null);
+  const [reservas,    setReservas]    = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState("");
+  const [filtro,      setFiltro]      = useState("todas");
+  const [cancelando,  setCancelando]  = useState(null);
+  const [expandido,   setExpandido]   = useState(null);
 
   useEffect(() => {
     async function cargar() {
@@ -35,32 +36,15 @@ export default function ReservasPage() {
           obtenerMetadatosEspacios(),
         ]);
 
-        // Índice de metadatos por gid para búsqueda rápida
         const metadatosPorGid = {};
-        for (const m of metadatos) {
-          metadatosPorGid[Number(m.gid)] = m;
-        }
+        for (const m of metadatos) metadatosPorGid[Number(m.gid)] = m;
 
-        // Enriquecer cada reserva con los nombres de sus espacios
         const reservasEnriquecidas = data.map((r) => {
           const espaciosEnriquecidos = (r.espacios || []).map((e) => {
             const meta = metadatosPorGid[Number(e.espacioId)];
-            return {
-              ...e,
-              nombre:    meta?.nombre    ?? `Espacio #${e.espacioId}`,
-              categoria: meta?.categoria ?? null,
-              planta:    meta?.planta    ?? null,
-            };
+            return { ...e, nombre: meta?.nombre ?? `Espacio #${e.espacioId}`, categoria: meta?.categoria ?? null, planta: meta?.planta ?? null };
           });
-
-          // Categoría principal para el icono — la del primer espacio
-          const categoriaIcono = espaciosEnriquecidos[0]?.categoria ?? null;
-
-          return {
-            ...r,
-            espaciosEnriquecidos,
-            categoriaIcono,
-          };
+          return { ...r, espaciosEnriquecidos, categoriaIcono: espaciosEnriquecidos[0]?.categoria ?? null };
         });
 
         setReservas(reservasEnriquecidas);
@@ -78,9 +62,7 @@ export default function ReservasPage() {
     setCancelando(reservaId);
     try {
       await cancelarReserva(reservaId);
-      setReservas((prev) =>
-        prev.map((r) => r.id === reservaId ? { ...r, estado: "cancelada" } : r)
-      );
+      setReservas((prev) => prev.map((r) => r.id === reservaId ? { ...r, estado: "cancelada" } : r));
     } catch (err) {
       alert(err.message || "Error cancelando la reserva");
     } finally {
@@ -88,9 +70,7 @@ export default function ReservasPage() {
     }
   };
 
-  const reservasFiltradas = filtro === "todas"
-    ? reservas
-    : reservas.filter((r) => r.estado === filtro);
+  const reservasFiltradas = filtro === "todas" ? reservas : reservas.filter((r) => r.estado === filtro);
 
   const contadores = {
     aceptada:   reservas.filter((r) => r.estado === "aceptada").length,
@@ -109,139 +89,181 @@ export default function ReservasPage() {
           </div>
         </div>
         <div className="reservas-topbar-right">
-          <button className="reservas-topbar-link" onClick={() => navigate("/")}>
-            Volver al mapa
-          </button>
+          <button className="reservas-topbar-link" onClick={() => navigate("/")}>← Volver al mapa</button>
           <div className="reservas-user-info">
             <div className="reservas-user-details">
               <div className="reservas-user-name">{usuario?.nombre || "Usuario"}</div>
               <div className="reservas-user-role">{usuario?.rol || "Sin rol"}</div>
             </div>
-            <div className="reservas-user-circle">
-              {(usuario?.nombre || "U").charAt(0).toUpperCase()}
-            </div>
+            <div className="reservas-user-circle">{(usuario?.nombre || "U").charAt(0).toUpperCase()}</div>
           </div>
-          <button
-            className="reservas-topbar-logout"
-            onClick={() => { logout(); navigate("/login"); }}
-            title="Cerrar sesión"
-          >
+          <button className="reservas-topbar-logout" onClick={() => { logout(); navigate("/login"); }} title="Cerrar sesión">
             <FiLogOut size={18} />
           </button>
         </div>
       </header>
 
       <main className="reservas-main">
+        {/* Cabecera */}
         <div className="reservas-header">
           <h2 className="reservas-title">Mis Reservas</h2>
           <p className="reservas-subtitle">Gestiona y consulta todas tus reservas de espacios</p>
         </div>
 
+        {/* Contadores */}
         <div className="reservas-contadores">
           {[
-            { label: "Activas",     count: contadores.aceptada,  color: "#16a34a" },
-            { label: "Finalizadas", count: contadores.finalizada, color: "#6b7280" },
-            { label: "Canceladas",  count: contadores.cancelada,  color: "#dc2626" },
-          ].map(({ label, count, color }) => (
-            <div key={label} className="reservas-contador-card">
+            { label: "Activas",     count: contadores.aceptada,  color: "#16a34a", bg: "#dcfce7" },
+            { label: "Finalizadas", count: contadores.finalizada, color: "#475569", bg: "#f1f5f9" },
+            { label: "Canceladas",  count: contadores.cancelada,  color: "#dc2626", bg: "#fee2e2" },
+          ].map(({ label, count, color, bg }) => (
+            <div key={label} className="reservas-contador-card" style={{ borderTop: `3px solid ${color}` }}>
               <p className="reservas-contador-num" style={{ color }}>{count}</p>
               <p className="reservas-contador-label">{label}</p>
             </div>
           ))}
         </div>
 
+        {/* Filtros */}
         <div className="reservas-filtros">
-          {FILTROS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFiltro(f)}
-              className={`reservas-filtro-btn${filtro === f ? " reservas-filtro-btn--active" : ""}`}
-            >
-              {f === "todas" ? "Todas" : f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
+          {FILTROS.map((f) => {
+            const estado = ESTADO_COLORES[f];
+            return (
+              <button
+                key={f}
+                onClick={() => setFiltro(f)}
+                className={`reservas-filtro-btn${filtro === f ? " reservas-filtro-btn--active" : ""}`}
+              >
+                {f !== "todas" && (
+                  <span style={{
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: filtro === f ? "#fff" : estado?.dot,
+                    display: "inline-block", marginRight: 6,
+                  }} />
+                )}
+                {f === "todas" ? "Todas" : estado?.label}
+              </button>
+            );
+          })}
+          <span className="reservas-filtro-count">{reservasFiltradas.length} reservas</span>
         </div>
 
-        {loading && <div className="reservas-loading">Cargando reservas...</div>}
-        {error   && <div className="reservas-error">{error}</div>}
+        {loading && (
+          <div className="reservas-loading">
+            <div className="reservas-spinner" />
+            Cargando reservas...
+          </div>
+        )}
+        {error && <div className="reservas-error">{error}</div>}
 
         {!loading && !error && reservasFiltradas.length === 0 && (
           <div className="reservas-empty">
-            No tienes reservas{filtro !== "todas" ? ` con estado "${filtro}"` : ""}.
+            <div className="reservas-empty-icon">📭</div>
+            <p>No tienes reservas{filtro !== "todas" ? ` con estado "${filtro}"` : ""}.</p>
           </div>
         )}
 
+        {/* Lista de reservas */}
         <div className="reservas-list">
           {reservasFiltradas.map((reserva) => {
-            const estadoInfo  = ESTADO_COLORES[reserva.estado] || { bg: "#f3f4f6", text: "#6b7280", label: reserva.estado };
-            const colorIcon   = colorIconPorCategoria(reserva.categoriaIcono);
-            const espacios    = reserva.espaciosEnriquecidos || [];
-            const nombreLabel = espacios.length === 1
-              ? espacios[0].nombre
-              : `${espacios[0]?.nombre || "Espacio"} +${espacios.length - 1} más`;
-
-            // Total personas de todos los espacios
+            const estadoInfo   = ESTADO_COLORES[reserva.estado] || { bg: "#f1f5f9", text: "#475569", label: reserva.estado, dot: "#94a3b8" };
+            const colorIcon    = colorIconPorCategoria(reserva.categoriaIcono);
+            const espacios     = reserva.espaciosEnriquecidos || [];
+            const nombreLabel  = espacios.length === 1 ? espacios[0].nombre : `${espacios[0]?.nombre || "Espacio"} +${espacios.length - 1} más`;
             const totalPersonas = espacios.reduce((acc, e) => acc + (e.numPersonas || 0), 0);
+            const isExpanded   = expandido === reserva.id;
 
             return (
-              <div key={reserva.id} className="reservas-item-card">
-                <div className="reservas-item-left">
-                  <div className="reservas-item-icon" style={{ background: colorIcon.bg, color: colorIcon.text }}>
-                    <FiMapPin size={18} />
-                  </div>
-                  <div className="reservas-item-info">
-                    <p className="reservas-item-nombre">{nombreLabel}</p>
+              <div key={reserva.id} className={`reservas-item-card ${reserva.estado === "cancelada" ? "reservas-item-card--cancelada" : ""}`}>
+                {/* Línea de estado lateral */}
+                <div className="reservas-item-estado-bar" style={{ background: estadoInfo.dot }} />
 
-                    {/* Si hay varios espacios, mostrarlos como píldoras */}
-                    {espacios.length > 1 && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
-                        {espacios.map((e, idx) => (
-                          <span key={idx} style={{
-                            fontSize: 11, padding: "2px 8px", borderRadius: 999,
-                            background: "#eff6ff", color: "#1d4ed8", fontWeight: 500,
-                          }}>
-                            {e.nombre}{e.numPersonas ? ` (${e.numPersonas}p)` : ""}
-                          </span>
-                        ))}
+                <div className="reservas-item-body">
+                  {/* Fila principal */}
+                  <div className="reservas-item-main">
+                    <div className="reservas-item-left">
+                      <div className="reservas-item-icon" style={{ background: colorIcon.bg, color: colorIcon.text }}>
+                        <FiMapPin size={18} />
                       </div>
-                    )}
+                      <div className="reservas-item-info">
+                        <p className="reservas-item-nombre">{nombreLabel}</p>
+                        <div className="reservas-item-meta">
+                          <span className="reservas-item-meta-item">
+                            <FiCalendar size={11} />
+                            {new Date(reserva.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                          <span className="reservas-item-meta-sep">·</span>
+                          <span className="reservas-item-meta-item">
+                            <FiClock size={11} />
+                            {reserva.horaInicio} — {reserva.horaFin}
+                          </span>
+                          {totalPersonas > 0 && (
+                            <>
+                              <span className="reservas-item-meta-sep">·</span>
+                              <span className="reservas-item-meta-item">
+                                <FiUsers size={11} /> {totalPersonas} personas
+                              </span>
+                            </>
+                          )}
+                          {reserva.tipoUso && (
+                            <>
+                              <span className="reservas-item-meta-sep">·</span>
+                              <span className="reservas-item-meta-item" style={{ textTransform: "capitalize" }}>
+                                {reserva.tipoUso}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                    <div className="reservas-item-meta">
-                      <span className="reservas-item-meta-item">
-                        <FiCalendar size={12} /> {reserva.fecha}
+                    <div className="reservas-item-right">
+                      <span className="reservas-item-badge" style={{ background: estadoInfo.bg, color: estadoInfo.text }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: estadoInfo.dot, display: "inline-block", marginRight: 5 }} />
+                        {estadoInfo.label}
                       </span>
-                      <span className="reservas-item-meta-item">
-                        <FiClock size={12} /> {reserva.horaInicio} — {reserva.horaFin}
-                      </span>
-                      {totalPersonas > 0 && (
-                        <span className="reservas-item-meta-item">
-                          <FiUsers size={12} /> {totalPersonas} personas
-                        </span>
+
+                      {espacios.length > 1 && (
+                        <button
+                          className="reservas-item-expand"
+                          onClick={() => setExpandido(isExpanded ? null : reserva.id)}
+                          title={isExpanded ? "Ocultar espacios" : "Ver espacios"}
+                        >
+                          {isExpanded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                        </button>
                       )}
-                      {reserva.tipoUso && (
-                        <span className="reservas-item-meta-item" style={{ textTransform: "capitalize" }}>
-                          {reserva.tipoUso}
-                        </span>
+
+                      {reserva.estado === "aceptada" && (
+                        <button
+                          className="reservas-item-cancelar"
+                          onClick={() => handleCancelar(reserva.id)}
+                          disabled={cancelando === reserva.id}
+                        >
+                          {cancelando === reserva.id ? (
+                            <span className="reservas-spinner-sm" />
+                          ) : (
+                            <><FiX size={12} /> Cancelar</>
+                          )}
+                        </button>
                       )}
                     </div>
                   </div>
-                </div>
 
-                <div className="reservas-item-right">
-                  <span
-                    className="reservas-item-badge"
-                    style={{ background: estadoInfo.bg, color: estadoInfo.text }}
-                  >
-                    {estadoInfo.label}
-                  </span>
-                  {reserva.estado === "aceptada" && (
-                    <button
-                      className="reservas-item-cancelar"
-                      onClick={() => handleCancelar(reserva.id)}
-                      disabled={cancelando === reserva.id}
-                    >
-                      {cancelando === reserva.id ? "Cancelando..." : "Cancelar"}
-                    </button>
+                  {/* Espacios expandidos */}
+                  {isExpanded && espacios.length > 1 && (
+                    <div className="reservas-item-espacios">
+                      {espacios.map((e, idx) => {
+                        const ci = colorIconPorCategoria(e.categoria);
+                        return (
+                          <div key={idx} className="reservas-espacio-pill">
+                            <span className="reservas-espacio-dot" style={{ background: ci.text }} />
+                            <span>{e.nombre}</span>
+                            {e.numPersonas && <span className="reservas-espacio-num">{e.numPersonas}p</span>}
+                            {e.planta && <span className="reservas-espacio-planta">P{e.planta}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
