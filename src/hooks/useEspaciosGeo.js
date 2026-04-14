@@ -24,17 +24,21 @@ export function useEspaciosGeo() {
 
         const featuresEnriquecidas = geojson.features.map((feature) => {
           const props = feature.properties || {};
-          const id = props.id_espacio || props.ID_ESPACIO;
-          const meta = metadatosPorId[id] || {};
+          const id    = props.id_espacio || props.ID_ESPACIO;
+          const meta  = metadatosPorId[id] || {};
 
           return {
             ...feature,
             properties: {
               ...props,
-              categoria: meta.categoria ?? null,
-              reservable: meta.reservable ?? false,
-              aforo: meta.aforo ?? null,
-              ocupado: meta.ocupado ?? false,
+              categoria:              meta.categoria              ?? null,
+              reservable:             meta.reservable             ?? false,
+              aforo:                  meta.aforo                  ?? null,
+              ocupado:                meta.ocupado                ?? false,
+              departamentoId:         meta.departamentoId         ?? null,
+              asignadoAEina:          meta.asignadoAEina          ?? false,
+              usuariosAsignados:      meta.usuariosAsignados      ?? [],
+              gid:                    meta.gid                    ?? props.gid ?? null,
             },
           };
         });
@@ -42,6 +46,7 @@ export function useEspaciosGeo() {
         setData({
           ...geojson,
           features: featuresEnriquecidas,
+          numberReturned: featuresEnriquecidas.length,
         });
       } catch (err) {
         setError(err.message || "Error cargando espacios");

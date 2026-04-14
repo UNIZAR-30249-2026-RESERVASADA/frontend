@@ -6,7 +6,7 @@ import { FiSearch, FiInfo, FiLogOut } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import unizarLogo from "../../assets/images/unizar.png";
 import { colorPorCategoria } from "../../utils/coloresEspacio";
-import { puedeReservarEspacio, categoriasLibres } from "../../utils/restriccionesReserva";
+import { puedeReservarEspacio, categoriasLibres, categoriasConRestriccionDepartamento } from "../../utils/restriccionesReserva";
 import "./HomePage.css";
 
 export default function HomePage() {
@@ -19,6 +19,7 @@ export default function HomePage() {
   const [textoBusqueda,         setTextoBusqueda]         = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [mostrarTooltip,        setMostrarTooltip]        = useState(false);
+  const [mostrarPermisos,       setMostrarPermisos]       = useState(false);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -30,13 +31,7 @@ export default function HomePage() {
     if (!data || !data.features) return [];
     const unicas = new Set(
       data.features
-        .map((f) =>
-          f.properties?.planta ??
-          f.properties?.PLANTA ??
-          f.properties?.Altura ??
-          f.properties?.altura ??
-          null
-        )
+        .map((f) => f.properties?.planta ?? f.properties?.PLANTA ?? f.properties?.Altura ?? f.properties?.altura ?? null)
         .filter((v) => v !== null)
     );
     return Array.from(unicas).sort((a, b) => Number(a) - Number(b));
@@ -47,11 +42,33 @@ export default function HomePage() {
     return puedeReservarEspacio(espacio, usuario).puede;
   };
 
-  const getRestriccionesTexto = () => {
-    if (!usuario?.rol) return "Sin permisos definidos";
-    const libres = categoriasLibres(usuario.rol);
-    if (libres.length === 0) return "Sin acceso a reservas";
-    return `Puedes reservar: ${libres.join(", ")}`;
+  const DEPARTAMENTOS = {
+    1: "Informática e Ingeniería de Sistemas",
+    2: "Ingeniería Electrónica y Comunicaciones",
+  };
+
+  const getNombreDepartamento = () => {
+    if (!usuario?.departamentoId) return null;
+    return DEPARTAMENTOS[Number(usuario.departamentoId)] || null;
+  };
+
+  const getRestriccionesLineas = () => {
+    if (!usuario?.rol) return ["Sin permisos definidos"];
+    const rol      = usuario.rol.toLowerCase();
+    const libres   = categoriasLibres(rol);
+    const conDpto  = categoriasConRestriccionDepartamento(rol);
+    const nombreDpto = getNombreDepartamento();
+    const lineas = [];
+    lineas.push(`Rol: ${usuario.rol}`);
+    if (nombreDpto) lineas.push(`Departamento: ${nombreDpto}`);
+    if (libres.length > 0) lineas.push(`Puedes reservar siempre: ${libres.join(", ")}`);
+    if (conDpto.length > 0 && nombreDpto) {
+      lineas.push(`Puedes reservar si es de tu departamento: ${conDpto.join(", ")}`);
+      if (conDpto.includes("despacho")) {
+        lineas.push("*Los despachos solo si están asignados a un departamento o investigador visitante");
+      }
+    }
+    return lineas;
   };
 
   const estaSeleccionado = (e) => {
@@ -79,11 +96,11 @@ export default function HomePage() {
     const filtroCategoria = categoriaSeleccionada;
 
     return data.features.filter((f) => {
-      const props      = f.properties || {};
-      const planta     = props.planta ?? props.PLANTA ?? props.Altura ?? props.altura ?? null;
-      const categoria  = (props.categoria || "").toLowerCase();
-      const nombre     = (props.nombre || "").toLowerCase();
-      const idEspacio  = (props.id_espacio || "").toLowerCase();
+      const props     = f.properties || {};
+      const planta    = props.planta ?? props.PLANTA ?? props.Altura ?? props.altura ?? null;
+      const categoria = (props.categoria || "").toLowerCase();
+      const nombre    = (props.nombre || "").toLowerCase();
+      const idEspacio = (props.id_espacio || "").toLowerCase();
 
       if (plantaSeleccionada !== "" && String(planta) !== String(plantaSeleccionada)) return false;
 
@@ -91,12 +108,8 @@ export default function HomePage() {
         let categoriaValida = false;
         switch (filtroCategoria) {
           case "laboratorio":
-            categoriaValida =
-              categoria.includes("laboratorio") ||
-              categoria.includes("lab") ||
-              categoria.includes("informática") ||
-              categoria.includes("informatica") ||
-              categoria.includes("sala informatica");
+            categoriaValida = categoria.includes("laboratorio") || categoria.includes("lab") ||
+              categoria.includes("informática") || categoria.includes("informatica") || categoria.includes("sala informatica");
             break;
           case "aula":      categoriaValida = categoria.includes("aula");      break;
           case "comun":     categoriaValida = categoria.includes("común") || categoria.includes("comun"); break;
@@ -109,11 +122,7 @@ export default function HomePage() {
       }
 
       if (filtroTexto) {
-        if (
-          !nombre.includes(filtroTexto) &&
-          !idEspacio.includes(filtroTexto) &&
-          !categoria.includes(filtroTexto)
-        ) return false;
+        if (!nombre.includes(filtroTexto) && !idEspacio.includes(filtroTexto) && !categoria.includes(filtroTexto)) return false;
       }
 
       return true;
@@ -188,18 +197,29 @@ export default function HomePage() {
             <div style={{
               backgroundColor: "#fef3c7", border: "1px solid #fcd34d",
               borderRadius: "6px", padding: "8px 10px", marginBottom: "16px",
-              fontSize: "12px", color: "#92400e",
+              fontSize: "12px", color: "#92400e", lineHeight: "1.6",
             }}>
-              <strong>Tu rol: {usuario?.rol || "Sin rol"}</strong>
-              <div style={{ marginTop: "4px" }}>{getRestriccionesTexto()}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <strong>{getRestriccionesLineas()[0]}</strong>
+                <button
+                  onClick={() => setMostrarPermisos(!mostrarPermisos)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", color: "#92400e", textDecoration: "underline", padding: 0, flexShrink: 0 }}
+                >
+                  {mostrarPermisos ? "Ocultar" : "Ver más"}
+                </button>
+              </div>
+              {mostrarPermisos && getRestriccionesLineas().slice(1).map((linea, idx) => (
+                <div key={idx} style={{ marginTop: 3, fontStyle: linea.startsWith("*") ? "italic" : "normal", opacity: linea.startsWith("*") ? 0.8 : 1 }}>
+                  {linea}
+                </div>
+              ))}
             </div>
 
             <label className="form-label" htmlFor="buscar">Buscar</label>
             <div className="field-with-icon">
               <FiSearch className="field-icon" />
               <input
-                id="buscar"
-                className="form-input"
+                id="buscar" className="form-input"
                 placeholder="Nombre del espacio..."
                 value={textoBusqueda}
                 onChange={(e) => setTextoBusqueda(e.target.value)}
@@ -208,12 +228,7 @@ export default function HomePage() {
 
             <label className="form-label" htmlFor="categoria">Categoría</label>
             <div className="field-select">
-              <select
-                id="categoria"
-                className="form-select"
-                value={categoriaSeleccionada}
-                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-              >
+              <select id="categoria" className="form-select" value={categoriaSeleccionada} onChange={(e) => setCategoriaSeleccionada(e.target.value)}>
                 <option value="todas">Todas las categorías</option>
                 <option value="laboratorio">Laboratorio</option>
                 <option value="aula">Aula</option>
@@ -279,28 +294,24 @@ export default function HomePage() {
                 const disponible = e.reservable !== false;
                 const isSelected = espacioSeleccionado?.id_espacio === e.id_espacio || espacioSeleccionado?.gid === e.gid;
                 const seleccionado = estaSeleccionado(e);
+                const resultado  = puedeReservarEspacio(e, usuario);
 
                 return (
                   <div
                     key={`${categoriaSeleccionada}-${plantaSeleccionada}-${e.id_espacio || e.gid}`}
                     className={[
                       "resultado-item",
-                      isSelected   ? "resultado-item--selected"  : "",
-                      seleccionado ? "resultado-item--checked"   : "",
+                      isSelected   ? "resultado-item--selected" : "",
+                      seleccionado ? "resultado-item--checked"  : "",
                     ].join(" ")}
                     ref={isSelected ? (el) => el?.scrollIntoView({ behavior: "smooth", block: "nearest" }) : null}
                   >
-                    <div
-                      className="resultado-click"
-                      onClick={() => setEspacioSeleccionado(isSelected ? null : e)}
-                    >
+                    <div className="resultado-click" onClick={() => setEspacioSeleccionado(isSelected ? null : e)}>
                       <div className="resultado-header-line">
                         <div className="resultado-nombre-uso">
                           <div className="resultado-nombre">{e.nombre || e.id_espacio || "Espacio"}</div>
                           <div className="resultado-uso">
-                            <div style={{ fontSize: "11px", color: "#666", marginBottom: "2px" }}>
-                              Uso: {e.uso || "N/D"}
-                            </div>
+                            <div style={{ fontSize: "11px", color: "#666", marginBottom: "2px" }}>Uso: {e.uso || "N/D"}</div>
                             {e.categoria && (
                               <div style={{ fontSize: "11px", color: colorPorCategoria(e.categoria), fontWeight: "500" }}>
                                 Cat: {e.categoria}
@@ -319,16 +330,27 @@ export default function HomePage() {
                           {disponible ? "Disponible" : "Ocupado"}
                         </span>
                       </div>
+                      {(e.categoria === "despacho" || e.categoria === "laboratorio") && (
+                        <div style={{ fontSize: "10px", color: "#6b7280", marginTop: 2 }}>
+                          {e.asignadoAEina && <span>Asignado a la EINA</span>}
+                          {!e.asignadoAEina && e.departamentoId && !(e.usuariosAsignados ?? []).length && (
+                            <span>Dpto: {String(e.departamentoId) === "1" ? "Informática" : "Electrónica"}</span>
+                          )}
+                          {(e.usuariosAsignados ?? []).length > 0 && (
+                            <span>Asignado a: {(e.usuariosAsignados ?? []).map((u) => u.nombre + " (" + u.rol + ")").join(", ")}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <button
                       className={[
                         "resultado-reservar-btn",
                         seleccionado ? "resultado-reservar-btn--seleccionado" : "",
-                        !disponible || !puedeReservar(e) ? "resultado-reservar-btn--disabled" : "",
+                        !disponible || !resultado.puede ? "resultado-reservar-btn--disabled" : "",
                       ].join(" ")}
-                      disabled={!disponible || !puedeReservar(e)}
-                      title={!puedeReservar(e) ? puedeReservarEspacio(e, usuario).motivo : ""}
+                      disabled={!disponible || !resultado.puede}
+                      title={!resultado.puede ? resultado.motivo : ""}
                       onClick={() => toggleSeleccion(e, f)}
                     >
                       {seleccionado ? "Deseleccionar" : "Seleccionar"}
