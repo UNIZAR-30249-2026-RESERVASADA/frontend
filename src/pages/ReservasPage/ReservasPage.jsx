@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiLogOut, FiCalendar, FiClock, FiUsers, FiMapPin, FiChevronDown, FiChevronUp, FiX } from "react-icons/fi";
+import { FiCalendar, FiClock, FiUsers, FiMapPin, FiChevronDown, FiChevronUp, FiX } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
 import { getMisReservas, cancelarReserva } from "../../services/reservasService";
 import { obtenerMetadatosEspacios } from "../../services/espaciosBackendService";
 import { colorIconPorCategoria } from "../../utils/coloresEspacio";
-import unizarLogo from "../../assets/images/unizar.png";
+import Header from "../../components/Header";
 import "./ReservasPage.css";
 
 const ESTADO_COLORES = {
@@ -19,7 +19,7 @@ const FILTROS = ["todas", "aceptada", "cancelada", "finalizada"];
 
 export default function ReservasPage() {
   const navigate            = useNavigate();
-  const { usuario, logout } = useAuth();
+  const { usuario } = useAuth();
   const [reservas,    setReservas]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState("");
@@ -80,28 +80,7 @@ export default function ReservasPage() {
 
   return (
     <div className="reservas-root">
-      <header className="reservas-topbar">
-        <div className="reservas-topbar-left">
-          <img src={unizarLogo} alt="Universidad Zaragoza" className="reservas-logo-img" />
-          <div>
-            <h1 className="reservas-app-title">ByronSpace</h1>
-            <p className="reservas-app-subtitle">Sistema de Reservas · Ada Byron</p>
-          </div>
-        </div>
-        <div className="reservas-topbar-right">
-          <button className="reservas-topbar-link" onClick={() => navigate("/")}>← Volver al mapa</button>
-          <div className="reservas-user-info">
-            <div className="reservas-user-details">
-              <div className="reservas-user-name">{usuario?.nombre || "Usuario"}</div>
-              <div className="reservas-user-role">{usuario?.rol || "Sin rol"}</div>
-            </div>
-            <div className="reservas-user-circle">{(usuario?.nombre || "U").charAt(0).toUpperCase()}</div>
-          </div>
-          <button className="reservas-topbar-logout" onClick={() => { logout(); navigate("/login"); }} title="Cerrar sesión">
-            <FiLogOut size={18} />
-          </button>
-        </div>
-      </header>
+      <Header backLink={{ label: "← Volver al mapa", to: "/" }} />
 
       <main className="reservas-main">
         {/* Cabecera */}

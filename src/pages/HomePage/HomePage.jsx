@@ -2,9 +2,9 @@ import { useMemo, useState, useEffect } from "react";
 import { useEspaciosGeo } from "../../hooks/useEspaciosGeo";
 import { useAuth } from "../../hooks/useAuth";
 import MapaEspacios from "../../components/MapaEspacios";
-import { FiSearch, FiInfo, FiLogOut } from "react-icons/fi";
+import { FiSearch, FiInfo } from "react-icons/fi";
+import Header from "../../components/Header";
 import { useNavigate } from "react-router-dom";
-import unizarLogo from "../../assets/images/unizar.png";
 import { colorPorCategoria } from "../../utils/coloresEspacio";
 import { puedeReservarEspacio, categoriasLibres, categoriasConRestriccionDepartamento } from "../../utils/restriccionesReserva";
 import "./HomePage.css";
@@ -12,7 +12,7 @@ import "./HomePage.css";
 export default function HomePage() {
   const navigate = useNavigate();
   const { data, loading, error } = useEspaciosGeo();
-  const { usuario, loading: authLoading, logout } = useAuth();
+  const { usuario, loading: authLoading } = useAuth();
   const [plantaSeleccionada,    setPlantaSeleccionada]    = useState("");
   const [espacioSeleccionado,   setEspacioSeleccionado]   = useState(null);
   const [espaciosSeleccionados, setEspaciosSeleccionados] = useState([]);
@@ -138,36 +138,7 @@ export default function HomePage() {
 
   return (
     <div className="home-root">
-      <header className="home-topbar">
-        <div className="home-topbar-left">
-          <img src={unizarLogo} alt="Universidad Zaragoza" className="home-logo-img" />
-          <div>
-            <h1 className="home-app-title">ByronSpace</h1>
-            <p className="home-app-subtitle">Sistema de Reservas · Ada Byron</p>
-          </div>
-        </div>
-        <div className="home-topbar-right">
-          <button className="home-topbar-link" onClick={() => navigate("/mis-reservas")}>
-            Mis reservas
-          </button>
-          <div className="home-user-info">
-            <div className="home-user-details">
-              <div className="home-user-name">{usuario?.nombre || "Usuario"}</div>
-              <div className="home-user-role">{usuario?.rol || "Sin rol"}</div>
-            </div>
-            <div className="home-user-circle">
-              {(usuario?.nombre || "U").charAt(0).toUpperCase()}
-            </div>
-          </div>
-          <button
-            className="home-topbar-logout"
-            onClick={() => { logout(); navigate("/login"); }}
-            title="Cerrar sesión"
-          >
-            <FiLogOut size={18} />
-          </button>
-        </div>
-      </header>
+      <Header />
 
       <div className="home-layout">
         <aside className="home-sidebar">

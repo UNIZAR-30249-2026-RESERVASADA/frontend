@@ -21,54 +21,7 @@
   box-sizing: border-box;
 }
 
-.reservas-topbar {
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-soft);
-  background: #f9fafb;
-  margin: 0 -32px 24px;
-  padding: 0 32px;
-}
 
-.reservas-topbar-left  { display: flex; align-items: center; gap: 12px; }
-.reservas-topbar-right { display: flex; align-items: center; gap: 16px; }
-
-.reservas-logo-img {
-  width: 50px; height: 50px; object-fit: contain;
-  border-radius: 8px; border: 2px solid #000;
-  padding: 4px; box-sizing: border-box; background: white;
-}
-
-.reservas-app-title    { margin: 0; font-size: 18px; font-weight: 600; }
-.reservas-app-subtitle { margin: 0; font-size: 12px; color: var(--text-muted); }
-
-.reservas-topbar-link {
-  border: none; background: transparent;
-  color: var(--text-muted); font-size: 13px; cursor: pointer;
-  font-weight: 500; transition: color 0.15s;
-}
-.reservas-topbar-link:hover { color: var(--text-main); }
-
-.reservas-user-info    { display: flex; align-items: center; gap: 12px; }
-.reservas-user-details { display: flex; flex-direction: column; text-align: right; gap: 2px; }
-.reservas-user-name    { font-size: 13px; font-weight: 600; color: var(--text-main); margin: 0; }
-.reservas-user-role    { font-size: 11px; color: var(--text-muted); margin: 0; }
-
-.reservas-user-circle {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: #111827; color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 600; flex-shrink: 0;
-}
-
-.reservas-topbar-logout {
-  border: none; background: transparent; color: var(--text-muted);
-  cursor: pointer; font-size: 18px; padding: 6px; border-radius: 8px;
-  transition: all 0.2s; display: flex; align-items: center; justify-content: center;
-}
-.reservas-topbar-logout:hover { background: #e5e7eb; color: var(--text-main); }
 
 .reservas-main     { max-width: 860px; margin: 0 auto; }
 .reservas-header   { margin-bottom: 28px; }

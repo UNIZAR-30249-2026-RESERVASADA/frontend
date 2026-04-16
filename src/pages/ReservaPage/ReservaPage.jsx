@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiCalendar, FiClock, FiUsers, FiFileText, FiMessageSquare, FiMapPin, FiLogOut } from "react-icons/fi";
+import { FiCalendar, FiClock, FiUsers, FiFileText, FiMessageSquare, FiMapPin } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
 import { colorIconPorCategoria } from "../../utils/coloresEspacio";
 import { crearReserva } from "../../services/reservasService";
-import unizarLogo from "../../assets/images/unizar.png";
+import Header from "../../components/Header";
 import "./ReservaPage.css";
 
 export default function ReservaPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { usuario, logout } = useAuth();
+  const { usuario } = useAuth();
 
   // Recibe array de espacios desde HomePage
   const espacios = location.state?.espacios || [];
@@ -70,36 +70,7 @@ export default function ReservaPage() {
 
   return (
     <div className="reserva-root">
-      <header className="reserva-topbar">
-        <div className="reserva-topbar-left">
-          <img src={unizarLogo} alt="Universidad Zaragoza" className="reserva-logo-img" />
-          <div>
-            <h1 className="reserva-app-title">ByronSpace</h1>
-            <p className="reserva-app-subtitle">Sistema de Reservas · Ada Byron</p>
-          </div>
-        </div>
-        <div className="reserva-topbar-right">
-          <button className="reserva-topbar-link" onClick={() => navigate("/mis-reservas")}>
-            Mis reservas
-          </button>
-          <div className="reserva-user-info">
-            <div className="reserva-user-details">
-              <div className="reserva-user-name">{usuario?.nombre || "Usuario"}</div>
-              <div className="reserva-user-role">{usuario?.rol || "Sin rol"}</div>
-            </div>
-            <div className="reserva-user-circle">
-              {(usuario?.nombre || "U").charAt(0).toUpperCase()}
-            </div>
-          </div>
-          <button
-            className="reserva-topbar-logout"
-            onClick={() => { logout(); navigate("/login"); }}
-            title="Cerrar sesión"
-          >
-            <FiLogOut size={18} />
-          </button>
-        </div>
-      </header>
+      <Header />
 
       <main className="reserva-main">
         {/* Cabecera */}
