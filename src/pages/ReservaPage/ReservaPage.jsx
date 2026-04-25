@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiCalendar, FiClock, FiUsers, FiFileText, FiMessageSquare, FiMapPin } from "react-icons/fi";
+import { FiCalendar, FiClock, FiUsers, FiFileText, FiMessageSquare, FiMapPin, FiAlertCircle, FiInfo } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
 import { colorIconPorCategoria } from "../../utils/coloresEspacio";
 import { crearReserva } from "../../services/reservasService";
@@ -14,6 +14,20 @@ export default function ReservaPage() {
 
   // Recibe array de espacios desde HomePage
   const espacios = location.state?.espacios || [];
+
+  // Calcular intersección de horarios de todos los espacios seleccionados
+  const horarioInterseccion = React.useMemo(() => {
+    if (!espacios.length) return null;
+    let apertura = null;
+    let cierre   = null;
+    for (const esp of espacios) {
+      const ap = esp.horarioApertura || esp.edificioHorarioApertura || null;
+      const ci = esp.horarioCierre   || esp.edificioHorarioCierre   || null;
+      if (ap) apertura = apertura ? (ap > apertura ? ap : apertura) : ap;
+      if (ci) cierre   = cierre   ? (ci < cierre   ? ci : cierre)   : ci;
+    }
+    return { apertura, cierre };
+  }, [espacios]);
 
   const [fecha,         setFecha]         = useState("");
   const [horaInicio,    setHoraInicio]    = useState("");
@@ -121,6 +135,29 @@ export default function ReservaPage() {
         <section className="reserva-card">
           <h2 className="reserva-card-title">Detalles de la Reserva</h2>
 
+          {/* Aviso de horario disponible */}
+          {horarioInterseccion?.apertura && (
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              background: "#eff6ff", border: "1px solid #bfdbfe",
+              borderRadius: 10, padding: "12px 14px", marginBottom: 16,
+              fontSize: 13, color: "#1e40af",
+            }}>
+              <FiInfo size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong>Horario disponible para esta reserva:</strong>
+                <span style={{ marginLeft: 6 }}>
+                  {horarioInterseccion.apertura} – {horarioInterseccion.cierre}
+                </span>
+                {espacios.length > 1 && (
+                  <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
+                    Intersección de los horarios de todos los espacios seleccionados
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             {/* Fecha y hora */}
             <div className="reserva-form-grid">
@@ -140,6 +177,8 @@ export default function ReservaPage() {
                 <input
                   type="time" className="reserva-form-input"
                   value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} required
+                  min={horarioInterseccion?.apertura || undefined}
+                  max={horarioInterseccion?.cierre   || undefined}
                 />
               </div>
             </div>
