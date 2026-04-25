@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useEspaciosGeo } from "../../hooks/useEspaciosGeo";
 import { useAuth } from "../../hooks/useAuth";
 import MapaEspacios from "../../components/MapaEspacios";
-import { FiSearch, FiInfo } from "react-icons/fi";
+import { FiSearch, FiInfo, FiUsers, FiClock } from "react-icons/fi";
 import Header from "../../components/Header";
 import { useNavigate } from "react-router-dom";
 import { colorPorCategoria } from "../../utils/coloresEspacio";
@@ -298,13 +298,28 @@ export default function HomePage() {
                       </div>
 
                       <div className="resultado-subinfo">
-                        <span className="resultado-personas-icon">👤</span>
-                        <span className="resultado-personas">{e.aforo ?? "N/D"} personas</span>
+                        <FiUsers size={11} style={{ color: "#6b7280", flexShrink: 0 }} />
+                        <span>{e.aforo ?? "N/D"} personas</span>
                         <span className="resultado-dot">·</span>
                         <span className={"resultado-estado-text " + (disponible ? "resultado-estado-disponible" : "resultado-estado-ocupado")}>
-                          {disponible ? "Disponible" : "Ocupado"}
+                          {disponible ? "Reservable" : "No reservable"}
                         </span>
                       </div>
+                      {(e.horarioApertura || e.edificioHorarioApertura) && (
+                        <div className="resultado-horario">
+                          <FiClock size={11} style={{ color: "#6b7280", flexShrink: 0 }} />
+                          <span>
+                            {e.horarioApertura
+                              ? `${e.horarioApertura} – ${e.horarioCierre}`
+                              : `${e.edificioHorarioApertura} – ${e.edificioHorarioCierre}`
+                            }
+                          </span>
+                          {e.horarioApertura
+                            ? <span className="resultado-horario-badge resultado-horario-badge--propio">Propio</span>
+                            : <span className="resultado-horario-badge">{e.edificioNombre || "Edificio"}</span>
+                          }
+                        </div>
+                      )}
                       {(e.categoria === "despacho" || e.categoria === "laboratorio") && (
                         <div style={{ fontSize: "10px", color: "#6b7280", marginTop: 2 }}>
                           {e.asignadoAEina && <span>Asignado a la EINA</span>}

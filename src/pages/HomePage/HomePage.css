@@ -79,6 +79,21 @@
 .resultado-estado-disponible { color: #16a34a; }
 .resultado-estado-ocupado    { color: #dc2626; }
 
+.resultado-subinfo-icon { color: var(--text-muted); flex-shrink: 0; }
+
+.resultado-horario {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-muted);
+}
+.resultado-horario-badge {
+  padding: 1px 6px; border-radius: 999px;
+  background: #eff6ff; color: #1d4ed8;
+  font-size: 10px; font-weight: 500;
+}
+.resultado-horario-badge--propio {
+  background: #fef3c7; color: #92400e;
+}
+
 .resultado-reservar-btn { margin-top: 4px; width: 100%; border-radius: 12px; border: none; padding: 7px 0; font-size: 13px; font-weight: 600; cursor: pointer; background: #111827; color: #ffffff; }
 .resultado-reservar-btn:hover               { background: #020617; }
 .resultado-reservar-btn--disabled           { background: #e5e7eb; color: #9ca3af; cursor: default; }

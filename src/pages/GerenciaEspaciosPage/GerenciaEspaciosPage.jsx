@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   FiSearch, FiEdit2, FiCheck, FiX, FiMapPin, FiUsers, FiInfo,
   FiShield, FiGrid, FiBookOpen, FiHome, FiRefreshCw, FiLayers,
-  FiCheckCircle, FiSliders
+  FiCheckCircle, FiSliders, FiClock
 } from "react-icons/fi";
 import { MdMeetingRoom, MdScience, MdOutlineOtherHouses } from "react-icons/md";
 import { obtenerMetadatosEspacios, modificarEspacio } from "../../services/espaciosBackendService";
@@ -83,6 +83,7 @@ export default function GerenciaEspaciosPage() {
   const [guardando,    setGuardando]    = useState(false);
   const [form,         setForm]         = useState({});
   const [errForm,      setErrForm]      = useState("");
+  const [errHorario,   setErrHorario]   = useState("");
 
   useEffect(() => { cargar(); }, []);
 
@@ -122,6 +123,7 @@ export default function GerenciaEspaciosPage() {
     const tipoInicial = opciones.includes(asig.tipo) ? asig.tipo : opciones[0];
     setEditando(espacio.gid);
     setErrForm("");
+    setErrHorario("");
     setForm({
       reservable:     espacio.reservable ?? false,
       categoria:      (espacio.categoria||"").toLowerCase(),
@@ -130,6 +132,8 @@ export default function GerenciaEspaciosPage() {
       tipoAsignacion: tipoInicial,
       departamentoId: espacio.departamentoId ? String(espacio.departamentoId) : "",
       usuariosIds:    (espacio.usuariosAsignados||[]).map(u => String(u.id)),
+      horarioApertura: espacio.horarioApertura ?? null,
+      horarioCierre:   espacio.horarioCierre   ?? null,
     });
   }
 
@@ -171,6 +175,24 @@ export default function GerenciaEspaciosPage() {
       cambios.asignadoAEina = newEina;
       cambios.departamentoId = newDpto;
       cambios.usuariosAsignados = newUsers;
+    }
+
+    const aperturaCambiada = form.horarioApertura !== (espacio.horarioApertura ?? null);
+    const cierreCambiado   = form.horarioCierre   !== (espacio.horarioCierre   ?? null);
+
+    // Si se cambia uno hay que cambiar los dos
+    if (aperturaCambiada && !form.horarioCierre) {
+      setErrHorario("Debes indicar también la hora de cierre");
+      return;
+    }
+    if (cierreCambiado && !form.horarioApertura) {
+      setErrHorario("Debes indicar también la hora de apertura");
+      return;
+    }
+    setErrHorario("");
+    if (aperturaCambiada || cierreCambiado) {
+      cambios.horarioApertura = form.horarioApertura || null;
+      cambios.horarioCierre   = form.horarioCierre   || null;
     }
 
     if (!Object.keys(cambios).length) { setEditando(null); return; }
@@ -281,6 +303,7 @@ export default function GerenciaEspaciosPage() {
                   <th className="gespace-th">Reservable</th>
                   <th className="gespace-th">Asignación</th>
                   <th className="gespace-th">Aforo</th>
+                  <th className="gespace-th">Horario</th>
                   <th className="gespace-th gespace-th--right"></th>
                 </tr>
               </thead>
@@ -470,6 +493,53 @@ export default function GerenciaEspaciosPage() {
                           <div className="gespace-aforo-cell">
                             <FiUsers size={12} className="gespace-aforo-icon" />
                             <span>{e.aforo ?? "—"}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Horario */}
+                      <td className="gespace-td">
+                        {isEdit ? (<>
+                          <div className="gespace-horario-edit">
+                            <input
+                              type="time"
+                              className="gespace-field gespace-field--time"
+                              value={form.horarioApertura || ""}
+                              onChange={ev => setForm(f => ({ ...f, horarioApertura: ev.target.value || null }))}
+                              placeholder="Apertura"
+                            />
+                            <span className="gespace-horario-sep">–</span>
+                            <input
+                              type="time"
+                              className="gespace-field gespace-field--time"
+                              value={form.horarioCierre || ""}
+                              onChange={ev => setForm(f => ({ ...f, horarioCierre: ev.target.value || null }))}
+                              placeholder="Cierre"
+                            />
+                            {(form.horarioApertura || form.horarioCierre) && (
+                              <button
+                                className="gespace-horario-reset"
+                                onClick={() => { setForm(f => ({ ...f, horarioApertura: null, horarioCierre: null })); setErrHorario(""); }}
+                                title="Usar horario del edificio"
+                              >
+                                <FiX size={11} />
+                              </button>
+                            )}
+                          </div>
+                          {errHorario && <p className="gespace-err" style={{ marginTop: 4 }}><FiX size={11} /> {errHorario}</p>}
+                        </>) : e.horarioApertura || e.horarioCierre ? (
+                          <div className="gespace-horario">
+                            <FiClock size={11} style={{ color: "#94a3b8" }} />
+                            <span>{e.horarioApertura || "—"} – {e.horarioCierre || "—"}</span>
+                            <span className="gespace-horario-badge">Propio</span>
+                          </div>
+                        ) : (
+                          <div className="gespace-horario">
+                            <FiClock size={11} style={{ color: "#94a3b8" }} />
+                            <span>{e.edificioHorarioApertura || "—"} – {e.edificioHorarioCierre || "—"}</span>
+                            <span className="gespace-horario-badge gespace-horario-badge--edificio">
+                              {e.edificioNombre || "Edificio"}
+                            </span>
                           </div>
                         )}
                       </td>
