@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import {
   FiSearch, FiEdit2, FiCheck, FiX, FiMapPin, FiUsers, FiInfo,
   FiShield, FiGrid, FiBookOpen, FiHome, FiRefreshCw, FiLayers,
-  FiCheckCircle, FiSliders, FiClock
+  FiCheckCircle, FiSliders, FiClock, FiAlertCircle
 } from "react-icons/fi";
 import { MdMeetingRoom, MdScience, MdOutlineOtherHouses } from "react-icons/md";
-import { obtenerMetadatosEspacios, modificarEspacio } from "../../services/espaciosBackendService";
+import { obtenerMetadatosEspacios, modificarEspacio, modificarEdificio } from "../../services/espaciosBackendService";
 import { colorIconPorCategoria } from "../../utils/coloresEspacio";
 import Header from "../../components/Header";
 import "./GerenciaEspaciosPage.css";
@@ -83,6 +83,10 @@ export default function GerenciaEspaciosPage() {
   const [guardando,    setGuardando]    = useState(false);
   const [form,         setForm]         = useState({});
   const [errForm,      setErrForm]      = useState("");
+  const [formEdificio, setFormEdificio] = useState(null);  // null = cerrado
+  const [guardandoEdificio, setGuardandoEdificio] = useState(false);
+  const [errEdificio,  setErrEdificio]  = useState("");
+  const [afectarTodos, setAfectarTodos] = useState(false);
   const [errHorario,   setErrHorario]   = useState("");
 
   useEffect(() => { cargar(); }, []);
@@ -117,6 +121,40 @@ export default function GerenciaEspaciosPage() {
     return s;
   }, [espacios]);
 
+  function abrirEdificio() {
+    const e = espacios[0] || {};
+    setFormEdificio({
+      id:                  1, // Ada Byron siempre es id=1
+      nombre:              e.edificioNombre              || "Ada Byron",
+      porcentajeOcupacion: e.edificioPorcentaje          ?? 100,
+    });
+    setErrEdificio("");
+    setAfectarTodos(false);
+  }
+
+  async function guardarEdificio() {
+    setErrEdificio("");
+    const cambios = {};
+    const e = espacios[0] || {};
+
+    if (Number(formEdificio.porcentajeOcupacion) !== (e.edificioPorcentaje ?? 100)) cambios.porcentajeOcupacion = Number(formEdificio.porcentajeOcupacion);
+    if (!Object.keys(cambios).length) { setFormEdificio(null); return; }
+
+    setGuardandoEdificio(true);
+    try {
+      const res = await modificarEdificio(formEdificio.id, cambios, afectarTodos);
+      if (res.reservasCanceladas?.length > 0) {
+        alert(`Se han cancelado ${res.reservasCanceladas.length} reserva(s) que ya no cumplen las nuevas condiciones del edificio.`);
+      }
+      await cargar();
+      setFormEdificio(null);
+    } catch (err) {
+      setErrEdificio(err.message || "Error guardando");
+    } finally {
+      setGuardandoEdificio(false);
+    }
+  }
+
   function abrirEdicion(espacio) {
     const asig = textoAsignacion(espacio);
     const opciones = opcionesAsignacion(espacio.categoria);
@@ -132,8 +170,9 @@ export default function GerenciaEspaciosPage() {
       tipoAsignacion: tipoInicial,
       departamentoId: espacio.departamentoId ? String(espacio.departamentoId) : "",
       usuariosIds:    (espacio.usuariosAsignados||[]).map(u => String(u.id)),
-      horarioApertura: espacio.horarioApertura ?? null,
-      horarioCierre:   espacio.horarioCierre   ?? null,
+      horarioApertura:     espacio.horarioApertura     ?? null,
+      horarioCierre:       espacio.horarioCierre       ?? null,
+      porcentajeOcupacion: espacio.porcentajeOcupacion ?? "",
     });
   }
 
@@ -176,6 +215,10 @@ export default function GerenciaEspaciosPage() {
       cambios.departamentoId = newDpto;
       cambios.usuariosAsignados = newUsers;
     }
+
+    const pctActual = espacio.porcentajeOcupacion ?? null;
+    const pctNuevo  = form.porcentajeOcupacion !== "" ? Number(form.porcentajeOcupacion) : null;
+    if (pctNuevo !== pctActual) cambios.porcentajeOcupacion = pctNuevo;
 
     const aperturaCambiada = form.horarioApertura !== (espacio.horarioApertura ?? null);
     const cierreCambiado   = form.horarioCierre   !== (espacio.horarioCierre   ?? null);
@@ -303,8 +346,9 @@ export default function GerenciaEspaciosPage() {
                   <th className="gespace-th">Reservable</th>
                   <th className="gespace-th">Asignación</th>
                   <th className="gespace-th">Aforo</th>
+                  <th className="gespace-th">% Ocup.</th>
                   <th className="gespace-th">Horario</th>
-                  <th className="gespace-th gespace-th--right"></th>
+                  <th className="gespace-th gespace-th--right gespace-th--sticky"></th>
                 </tr>
               </thead>
               <tbody>
@@ -497,6 +541,41 @@ export default function GerenciaEspaciosPage() {
                         )}
                       </td>
 
+                      {/* Porcentaje ocupación */}
+                      <td className="gespace-td">
+                        {isEdit ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <input
+                              type="number" min={0} max={100}
+                              className="gespace-field gespace-field--num"
+                              value={form.porcentajeOcupacion}
+                              onChange={ev => setForm(f => ({ ...f, porcentajeOcupacion: ev.target.value }))}
+                              placeholder="—"
+                            />
+                            <span style={{ fontSize: 11, color: "#94a3b8" }}>%</span>
+                            {form.porcentajeOcupacion !== "" && (
+                              <button
+                                className="gespace-horario-reset"
+                                onClick={() => setForm(f => ({ ...f, porcentajeOcupacion: "" }))}
+                                title="Usar porcentaje del edificio"
+                              >
+                                <FiX size={11} />
+                              </button>
+                            )}
+                          </div>
+                        ) : e.porcentajeOcupacion !== null && e.porcentajeOcupacion !== undefined ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13 }}>
+                            <span style={{ fontWeight: 600, color: "#374151" }}>{e.porcentajeOcupacion}%</span>
+                            <span className="gespace-horario-badge">Propio</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13 }}>
+                            <span style={{ color: "#374151" }}>{e.edificioPorcentaje ?? 100}%</span>
+                            <span className="gespace-horario-badge gespace-horario-badge--edificio">Edificio</span>
+                          </div>
+                        )}
+                      </td>
+
                       {/* Horario */}
                       <td className="gespace-td">
                         {isEdit ? (<>
@@ -545,7 +624,7 @@ export default function GerenciaEspaciosPage() {
                       </td>
 
                       {/* Acciones */}
-                      <td className="gespace-td gespace-td--actions">
+                      <td className="gespace-td gespace-td--actions gespace-td--sticky">
                         {isEdit ? (
                           <div className="gespace-actions">
                             <button
@@ -598,6 +677,80 @@ export default function GerenciaEspaciosPage() {
             <div className="gespace-footer">
               Mostrando <strong>{espaciosFiltrados.length}</strong> de <strong>{espacios.length}</strong> espacios
             </div>
+          </div>
+        )}
+
+        {/* Panel configuración edificio */}
+        {!loading && !error && (
+          <div className="gespace-edificio-panel">
+            <div className="gespace-edificio-header">
+              <div className="gespace-edificio-title-wrap">
+                <FiHome size={16} style={{ color: "#6b7280" }} />
+                <div>
+                  <span className="gespace-edificio-title">Configuración del edificio</span>
+                  <span className="gespace-edificio-subtitle">
+                    {espacios[0]?.edificioNombre || "Ada Byron"} ·
+                    Horario: {espacios[0]?.edificioHorarioApertura || "—"} – {espacios[0]?.edificioHorarioCierre || "—"} ·
+                    Ocupación máx.: {espacios[0]?.edificioPorcentaje ?? 100}%
+                  </span>
+                </div>
+              </div>
+              {!formEdificio ? (
+                <button className="gespace-btn-edit" onClick={abrirEdificio} title="Editar edificio">
+                  <FiEdit2 size={13} />
+                </button>
+              ) : (
+                <div className="gespace-actions">
+                  <button className="gespace-btn-save" onClick={guardarEdificio} disabled={guardandoEdificio}>
+                    {guardandoEdificio ? <FiRefreshCw size={12} className="gespace-spin" /> : <FiCheck size={12} />}
+                  </button>
+                  <button className="gespace-btn-cancel" onClick={() => setFormEdificio(null)}>
+                    <FiX size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {formEdificio && (
+              <div className="gespace-edificio-form">
+                <div className="gespace-edificio-row">
+                  <div className="gespace-edificio-field">
+                    <label className="gespace-edificio-label">% Ocupación máx.</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input
+                        type="number" min={0} max={100}
+                        className="gespace-field gespace-field--num"
+                        value={formEdificio.porcentajeOcupacion}
+                        onChange={ev => setFormEdificio(f => ({ ...f, porcentajeOcupacion: ev.target.value }))}
+                      />
+                      <span style={{ fontSize: 12, color: "#6b7280" }}>%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <label className="gespace-edificio-check">
+                  <input
+                    type="checkbox"
+                    checked={afectarTodos}
+                    onChange={ev => setAfectarTodos(ev.target.checked)}
+                  />
+                  <span>Aplicar porcentaje a <strong>todos</strong> los espacios (incluidos los que tienen % propio)</span>
+                </label>
+
+                {!afectarTodos && (
+                  <p className="gespace-edificio-hint">
+                    <FiInfo size={12} /> Solo afectará a espacios sin porcentaje propio
+                  </p>
+                )}
+                {afectarTodos && (
+                  <p className="gespace-edificio-hint gespace-edificio-hint--warn">
+                    <FiAlertCircle size={12} /> Sobreescribirá el porcentaje de todos los espacios del edificio
+                  </p>
+                )}
+
+                {errEdificio && <p className="gespace-err"><FiX size={11} /> {errEdificio}</p>}
+              </div>
+            )}
           </div>
         )}
       </main>

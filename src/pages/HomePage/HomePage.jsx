@@ -20,6 +20,7 @@ export default function HomePage() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [mostrarTooltip,        setMostrarTooltip]        = useState(false);
   const [mostrarPermisos,       setMostrarPermisos]       = useState(false);
+  const [capacidadMinima,       setCapacidadMinima]       = useState(0);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -129,9 +130,14 @@ export default function HomePage() {
         if (!nombre.includes(filtroTexto) && !idEspacio.includes(filtroTexto) && !categoria.includes(filtroTexto)) return false;
       }
 
+      if (capacidadMinima > 0) {
+        const aforo = Number(props.aforo ?? 0);
+        if (aforo < capacidadMinima) return false;
+      }
+
       return true;
     });
-  }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada]);
+  }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada, capacidadMinima]);
 
   if (authLoading) return null;
   if (!usuario)    return null;
@@ -216,11 +222,18 @@ export default function HomePage() {
 
             <label className="form-label" htmlFor="capacidad">Capacidad mínima</label>
             <div className="field-select">
-              <select id="capacidad" className="form-select">
-                <option>Cualquier capacidad</option>
-                <option>10+</option>
-                <option>20+</option>
-                <option>30+</option>
+              <select
+                id="capacidad"
+                className="form-select"
+                value={capacidadMinima}
+                onChange={(e) => setCapacidadMinima(Number(e.target.value))}
+              >
+                <option value={0}>Cualquier capacidad</option>
+                <option value={10}>10+ personas</option>
+                <option value={20}>20+ personas</option>
+                <option value={30}>30+ personas</option>
+                <option value={50}>50+ personas</option>
+                <option value={100}>100+ personas</option>
               </select>
             </div>
 

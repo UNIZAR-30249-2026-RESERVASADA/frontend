@@ -80,15 +80,31 @@ export default function MapaEspacios({
     const aforo      = props.aforo      ?? "N/D";
     const reservable = props.reservable ? "Sí" : "No";
 
+    // Horario efectivo — propio del espacio o heredado del edificio
+    const horApertura = props.horarioApertura || props.edificioHorarioApertura || null;
+    const horCierre   = props.horarioCierre   || props.edificioHorarioCierre   || null;
+    const horarioStr  = horApertura && horCierre
+      ? `${horApertura} – ${horCierre}${props.horarioApertura ? " <span style=\"background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:10px;\">Propio</span>" : ""}`
+      : "No definido";
+
     layer.bindPopup(`
-      <div style="font-family: Arial; font-size: 13px;">
-        <strong>${titulo}</strong><br/>
-        ID: ${props.id_espacio || "N/D"}<br/>
-        Uso: ${uso}<br/>
-        Categoría: ${categoria}<br/>
-        Planta: ${planta}<br/>
-        Aforo: ${aforo}<br/>
-        Reservable: ${reservable}
+      <div style="font-family: system-ui, Arial; font-size: 13px; min-width: 180px;">
+        <div style="font-weight:700; font-size:14px; margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:6px;">
+          ${titulo}
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div><span style="color:#6b7280; font-size:11px;">ID</span><br/>${props.id_espacio || "N/D"}</div>
+          <div><span style="color:#6b7280; font-size:11px;">USO FÍSICO</span><br/>${uso}</div>
+          <div><span style="color:#6b7280; font-size:11px;">CATEGORÍA</span><br/>${categoria}</div>
+          <div><span style="color:#6b7280; font-size:11px;">PLANTA</span><br/>P${planta}</div>
+          <div><span style="color:#6b7280; font-size:11px;">AFORO</span><br/>${aforo} personas</div>
+          <div><span style="color:#6b7280; font-size:11px;">HORARIO</span><br/>${horarioStr}</div>
+          <div><span style="color:#6b7280; font-size:11px;">RESERVABLE</span><br/>
+            <span style="color:${props.reservable ? "#16a34a" : "#dc2626"}; font-weight:600;">
+              ${reservable}
+            </span>
+          </div>
+        </div>
       </div>
     `);
 

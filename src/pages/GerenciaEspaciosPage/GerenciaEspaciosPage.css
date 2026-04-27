@@ -7,7 +7,7 @@
   box-sizing: border-box;
 }
 
-.gespace-main { max-width: 1200px; margin: 0 auto; }
+.gespace-main { max-width: 1400px; margin: 0 auto; }
 
 /* Cabecera */
 .gespace-header {
@@ -308,7 +308,7 @@
 .gespace-horario-edit {
   display: flex; align-items: center; gap: 4px;
 }
-.gespace-field--time { width: 90px; }
+.gespace-field--time { width: 78px; }
 .gespace-horario-sep { font-size: 12px; color: #94a3b8; }
 .gespace-horario-reset {
   width: 22px; height: 22px; border-radius: 5px; border: 1px solid #e2e8f0;
@@ -319,3 +319,57 @@
 .gespace-horario-badge--edificio {
   background: #eff6ff; color: #1d4ed8;
 }
+
+/* Panel edificio */
+.gespace-edificio-panel {
+  margin-top: 16px; background: #fff;
+  border-radius: 12px; border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04); overflow: hidden;
+}
+.gespace-edificio-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+}
+.gespace-edificio-title-wrap { display: flex; align-items: center; gap: 10px; }
+.gespace-edificio-title    { font-size: 13px; font-weight: 600; color: #0f172a; display: block; }
+.gespace-edificio-subtitle { font-size: 11px; color: #64748b; display: block; margin-top: 2px; }
+
+.gespace-edificio-form {
+  padding: 0 18px 16px; display: flex; flex-direction: column; gap: 12px;
+  border-top: 0.5px solid #f1f5f9;
+  padding-top: 14px;
+}
+.gespace-edificio-row  { display: flex; gap: 16px; flex-wrap: wrap; }
+.gespace-edificio-field { display: flex; flex-direction: column; gap: 5px; }
+.gespace-edificio-label { font-size: 11px; font-weight: 500; color: #64748b; }
+
+.gespace-edificio-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: #374151; cursor: pointer;
+}
+.gespace-edificio-check input { cursor: pointer; accent-color: #0f172a; }
+
+.gespace-edificio-hint {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: #64748b; margin: 0;
+}
+.gespace-edificio-hint--warn { color: #d97706; }
+
+/* Columna acciones sticky */
+.gespace-td--sticky,
+.gespace-th--sticky {
+  position: sticky;
+  right: 0;
+  background: #fff;
+  box-shadow: -4px 0 8px rgba(0,0,0,0.04);
+  z-index: 1;
+}
+.gespace-tabla thead .gespace-th--sticky {
+  background: #f8fafc;
+}
+.gespace-row--editing .gespace-td--sticky {
+  background: #f0f9ff;
+}
+
+/* Scroll horizontal en tabla cuando no cabe */
+.gespace-card { overflow-x: auto; }
