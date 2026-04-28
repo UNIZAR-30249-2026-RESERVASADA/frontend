@@ -15,6 +15,18 @@ export default function ReservaPage() {
   // Recibe array de espacios desde HomePage
   const espacios = location.state?.espacios || [];
 
+  // Calcular aforo permitido por espacio según porcentaje efectivo
+  const aforoPermitidoPorEspacio = React.useMemo(() => {
+    const resultado = {};
+    for (const esp of espacios) {
+      const aforo = esp.aforo ?? null;
+      const pct   = esp.porcentajeOcupacion ?? esp.edificioPorcentaje ?? 100;
+      const id    = esp.gid || esp.id_espacio;
+      resultado[id] = aforo !== null ? Math.floor(aforo * pct / 100) : null;
+    }
+    return resultado;
+  }, [espacios]);
+
   // Calcular intersección de horarios de todos los espacios seleccionados
   const horarioInterseccion = React.useMemo(() => {
     if (!espacios.length) return null;
@@ -57,6 +69,15 @@ export default function ReservaPage() {
     if (espacios.length === 0) {
       setError("No se ha seleccionado ningún espacio");
       return;
+    }
+
+    // Validar que todos los espacios tienen numPersonas
+    for (const esp of espacios) {
+      const id = esp.gid || esp.id_espacio;
+      if (!numPersonasPorEspacio[id]) {
+        setError(`Indica el número de asistentes para "${esp.nombre || esp.id_espacio}"`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -123,7 +144,22 @@ export default function ReservaPage() {
                     <div className="reserva-space-capacity-icon" style={{ color: colorIcon.text }}>
                       <FiUsers size={18} />
                     </div>
-                    <div className="reserva-space-capacity-text">{aforo} personas</div>
+                    <div className="reserva-space-capacity-text">
+                      {(() => {
+                        const id = esp.gid || esp.id_espacio;
+                        const pct = esp.porcentajeOcupacion ?? esp.edificioPorcentaje ?? 100;
+                        const aforoPermitido = aforoPermitidoPorEspacio[id];
+                        if (pct < 100 && aforoPermitido !== null) {
+                          return (
+                            <>
+                              <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 11 }}>{aforo} personas</span>
+                              <span style={{ color: colorIcon.text, fontWeight: 600 }}>{aforoPermitido} máx. ({pct}%)</span>
+                            </>
+                          );
+                        }
+                        return <span>{aforo} personas</span>;
+                      })()}
+                    </div>
                   </div>
                 </div>
               );
@@ -226,11 +262,16 @@ export default function ReservaPage() {
                 <input
                   type="number"
                   min={1}
-                  max={espacioActivo?.aforo ?? undefined}
+                  required
+                  max={aforoPermitidoPorEspacio[gidActivo] ?? espacioActivo?.aforo ?? undefined}
                   className="reserva-form-input"
                   value={numPersonasPorEspacio[gidActivo] || ""}
                   onChange={(e) => handleNumPersonasChange(e.target.value)}
-                  placeholder={espacioActivo?.aforo ? `Máx. ${espacioActivo.aforo}` : "Nº personas"}
+                  placeholder={
+                    aforoPermitidoPorEspacio[gidActivo] !== null && aforoPermitidoPorEspacio[gidActivo] !== undefined
+                      ? `Máx. ${aforoPermitidoPorEspacio[gidActivo]} (${espacioActivo?.porcentajeOcupacion ?? espacioActivo?.edificioPorcentaje ?? 100}%)`
+                      : espacioActivo?.aforo ? `Máx. ${espacioActivo.aforo}` : "Nº personas"
+                  }
                 />
               </div>
               {/* Resumen por espacio */}
