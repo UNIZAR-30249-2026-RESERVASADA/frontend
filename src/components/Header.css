@@ -91,13 +91,13 @@
 .hdr-notif-btn:hover { background: #e5e7eb; color: #111827; }
 
 .hdr-notif-badge {
-  position: absolute; top: 0; right: 0;
+  position: absolute; top: 1px; right: 1px;
   background: #dc2626; color: #fff;
-  font-size: 9px; font-weight: 700;
-  min-width: 16px; height: 16px;
-  border-radius: 999px; padding: 0 4px;
+  font-size: 8px; font-weight: 700;
+  min-width: 13px; height: 13px;
+  border-radius: 999px; padding: 0 3px;
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid #f9fafb;
+  border: 1.5px solid #f9fafb;
   line-height: 1;
 }
 
@@ -136,7 +136,7 @@
 .hdr-notif-item--unread { background: #eff6ff; }
 .hdr-notif-item--unread:hover { background: #dbeafe; }
 
-.hdr-notif-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.hdr-notif-icon { flex-shrink: 0; }
 
 .hdr-notif-body {
   display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0;
@@ -153,3 +153,16 @@
   width: 8px; height: 8px; border-radius: 50%;
   background: #2563eb; flex-shrink: 0; margin-top: 4px;
 }
+
+.hdr-notif-espacios {
+  font-size: 11px; color: #374151; font-weight: 500;
+}
+.hdr-notif-footer {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 4px;
+}
+.hdr-notif-link {
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; color: #2563eb; font-weight: 600;
+  padding: 0; font-family: inherit;
+}
+.hdr-notif-link:hover { text-decoration: underline; }
