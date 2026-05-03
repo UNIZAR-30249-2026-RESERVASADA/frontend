@@ -90,6 +90,13 @@ export default function Header({ backLink }) {
         </svg>
       </div>
     );
+    if (motivo === "cambio_usuario") return (
+      <div style={{ ...base, background: "#faf5ff" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+    );
     return (
       <div style={{ ...base, background: "#f1f5f9" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -106,6 +113,7 @@ export default function Header({ backLink }) {
       porcentaje_ocupacion:  "El aforo máximo ha cambiado y tu reserva supera el nuevo límite",
       horario:               "El horario del espacio ha cambiado y tu reserva queda fuera de él",
       politica:              "El gerente ha modificado el espacio y ya no puedes reservarlo",
+      cambio_usuario:        "Tu perfil de usuario ha cambiado y tu reserva ya no es válida",
     };
     return textos[motivo] || motivo;
   };

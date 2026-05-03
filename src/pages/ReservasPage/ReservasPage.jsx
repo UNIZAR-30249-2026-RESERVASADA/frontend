@@ -18,14 +18,16 @@ const ESTADO_COLORES = {
 const FILTROS = ["todas", "aceptada", "cancelada", "finalizada"];
 
 export default function ReservasPage() {
-  const navigate            = useNavigate();
+  const navigate = useNavigate();
   const { usuario } = useAuth();
-  const [reservas,    setReservas]    = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState("");
-  const [filtro,      setFiltro]      = useState("todas");
-  const [cancelando,  setCancelando]  = useState(null);
-  const [expandido,   setExpandido]   = useState(null);
+  const [reservas,      setReservas]      = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState("");
+  const [filtro,        setFiltro]        = useState("todas");
+  const [cancelando,    setCancelando]    = useState(null);
+  const [expandido,     setExpandido]     = useState(null);
+  const [confirmar,     setConfirmar]     = useState(null);
+  const [errorCancelar, setErrorCancelar] = useState("");
 
   useEffect(() => {
     async function cargar() {
@@ -57,14 +59,16 @@ export default function ReservasPage() {
     cargar();
   }, []);
 
-  const handleCancelar = async (reservaId) => {
-    if (!window.confirm("¿Seguro que quieres cancelar esta reserva?")) return;
+  const handleCancelar = async () => {
+    if (!confirmar) return;
+    const reservaId = confirmar;
+    setConfirmar(null);
     setCancelando(reservaId);
     try {
       await cancelarReserva(reservaId);
       setReservas((prev) => prev.map((r) => r.id === reservaId ? { ...r, estado: "cancelada" } : r));
     } catch (err) {
-      alert(err.message || "Error cancelando la reserva");
+      setErrorCancelar(err.message || "Error cancelando la reserva");
     } finally {
       setCancelando(null);
     }
@@ -83,13 +87,11 @@ export default function ReservasPage() {
       <Header backLink={{ label: "← Volver al mapa", to: "/" }} />
 
       <main className="reservas-main">
-        {/* Cabecera */}
         <div className="reservas-header">
           <h2 className="reservas-title">Mis Reservas</h2>
           <p className="reservas-subtitle">Gestiona y consulta todas tus reservas de espacios</p>
         </div>
 
-        {/* Contadores */}
         <div className="reservas-contadores">
           {[
             { label: "Activas",     count: contadores.aceptada,  color: "#16a34a", bg: "#dcfce7" },
@@ -103,7 +105,6 @@ export default function ReservasPage() {
           ))}
         </div>
 
-        {/* Filtros */}
         <div className="reservas-filtros">
           {FILTROS.map((f) => {
             const estado = ESTADO_COLORES[f];
@@ -114,11 +115,7 @@ export default function ReservasPage() {
                 className={`reservas-filtro-btn${filtro === f ? " reservas-filtro-btn--active" : ""}`}
               >
                 {f !== "todas" && (
-                  <span style={{
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: filtro === f ? "#fff" : estado?.dot,
-                    display: "inline-block", marginRight: 6,
-                  }} />
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: filtro === f ? "#fff" : estado?.dot, display: "inline-block", marginRight: 6 }} />
                 )}
                 {f === "todas" ? "Todas" : estado?.label}
               </button>
@@ -137,28 +134,29 @@ export default function ReservasPage() {
 
         {!loading && !error && reservasFiltradas.length === 0 && (
           <div className="reservas-empty">
-            <div className="reservas-empty-icon">📭</div>
-            <p>No tienes reservas{filtro !== "todas" ? ` con estado "${filtro}"` : ""}.</p>
+            <svg className="reservas-empty-icon" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="1"/>
+              <line x1="9" y1="12" x2="15" y2="12"/>
+              <line x1="9" y1="16" x2="12" y2="16"/>
+            </svg>
+            <p>No tienes reservas{filtro !== "todas" ? ` con estado "${ESTADO_COLORES[filtro]?.label?.toLowerCase() || filtro}"` : ""}.</p>
           </div>
         )}
 
-        {/* Lista de reservas */}
         <div className="reservas-list">
           {reservasFiltradas.map((reserva) => {
-            const estadoInfo   = ESTADO_COLORES[reserva.estado] || { bg: "#f1f5f9", text: "#475569", label: reserva.estado, dot: "#94a3b8" };
-            const colorIcon    = colorIconPorCategoria(reserva.categoriaIcono);
-            const espacios     = reserva.espaciosEnriquecidos || [];
-            const nombreLabel  = espacios.length === 1 ? espacios[0].nombre : `${espacios[0]?.nombre || "Espacio"} +${espacios.length - 1} más`;
+            const estadoInfo    = ESTADO_COLORES[reserva.estado] || { bg: "#f1f5f9", text: "#475569", label: reserva.estado, dot: "#94a3b8" };
+            const colorIcon     = colorIconPorCategoria(reserva.categoriaIcono);
+            const espacios      = reserva.espaciosEnriquecidos || [];
+            const nombreLabel   = espacios.length === 1 ? espacios[0].nombre : `${espacios[0]?.nombre || "Espacio"} +${espacios.length - 1} más`;
             const totalPersonas = espacios.reduce((acc, e) => acc + (e.numPersonas || 0), 0);
-            const isExpanded   = expandido === reserva.id;
+            const isExpanded    = expandido === reserva.id;
 
             return (
               <div key={reserva.id} className={`reservas-item-card ${reserva.estado === "cancelada" ? "reservas-item-card--cancelada" : ""}`}>
-                {/* Línea de estado lateral */}
                 <div className="reservas-item-estado-bar" style={{ background: estadoInfo.dot }} />
-
                 <div className="reservas-item-body">
-                  {/* Fila principal */}
                   <div className="reservas-item-main">
                     <div className="reservas-item-left">
                       <div className="reservas-item-icon" style={{ background: colorIcon.bg, color: colorIcon.text }}>
@@ -179,17 +177,13 @@ export default function ReservasPage() {
                           {totalPersonas > 0 && (
                             <>
                               <span className="reservas-item-meta-sep">·</span>
-                              <span className="reservas-item-meta-item">
-                                <FiUsers size={11} /> {totalPersonas} personas
-                              </span>
+                              <span className="reservas-item-meta-item"><FiUsers size={11} /> {totalPersonas} personas</span>
                             </>
                           )}
                           {reserva.tipoUso && (
                             <>
                               <span className="reservas-item-meta-sep">·</span>
-                              <span className="reservas-item-meta-item" style={{ textTransform: "capitalize" }}>
-                                {reserva.tipoUso}
-                              </span>
+                              <span className="reservas-item-meta-item" style={{ textTransform: "capitalize" }}>{reserva.tipoUso}</span>
                             </>
                           )}
                         </div>
@@ -203,11 +197,7 @@ export default function ReservasPage() {
                       </span>
 
                       {espacios.length > 1 && (
-                        <button
-                          className="reservas-item-expand"
-                          onClick={() => setExpandido(isExpanded ? null : reserva.id)}
-                          title={isExpanded ? "Ocultar espacios" : "Ver espacios"}
-                        >
+                        <button className="reservas-item-expand" onClick={() => setExpandido(isExpanded ? null : reserva.id)}>
                           {isExpanded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
                         </button>
                       )}
@@ -215,20 +205,15 @@ export default function ReservasPage() {
                       {reserva.estado === "aceptada" && (
                         <button
                           className="reservas-item-cancelar"
-                          onClick={() => handleCancelar(reserva.id)}
+                          onClick={() => { setConfirmar(reserva.id); setErrorCancelar(""); }}
                           disabled={cancelando === reserva.id}
                         >
-                          {cancelando === reserva.id ? (
-                            <span className="reservas-spinner-sm" />
-                          ) : (
-                            <><FiX size={12} /> Cancelar</>
-                          )}
+                          {cancelando === reserva.id ? <span className="reservas-spinner-sm" /> : <><FiX size={12} /> Cancelar</>}
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Espacios expandidos */}
                   {isExpanded && espacios.length > 1 && (
                     <div className="reservas-item-espacios">
                       {espacios.map((e, idx) => {
@@ -250,6 +235,33 @@ export default function ReservasPage() {
           })}
         </div>
       </main>
+
+      {/* Modal de confirmación */}
+      {confirmar && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <div className="modal-icon">
+                <FiX size={20} color="#dc2626" />
+              </div>
+              <div>
+                <p className="modal-title">Cancelar reserva</p>
+                <p className="modal-subtitle">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+            <p className="modal-body">¿Estás seguro de que quieres cancelar esta reserva?</p>
+            {errorCancelar && <p className="modal-error">{errorCancelar}</p>}
+            <div className="modal-actions">
+              <button className="modal-btn modal-btn--secondary" onClick={() => setConfirmar(null)}>
+                Mantener reserva
+              </button>
+              <button className="modal-btn modal-btn--danger" onClick={handleCancelar}>
+                Sí, cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
