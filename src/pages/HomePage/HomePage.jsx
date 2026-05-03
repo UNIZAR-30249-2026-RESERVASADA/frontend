@@ -121,6 +121,7 @@ export default function HomePage() {
           case "despacho":  categoriaValida = categoria.includes("despacho");  break;
           case "seminario": categoriaValida = categoria.includes("seminario"); break;
           case "pasillo":   categoriaValida = categoria.includes("pasillo");   break;
+          case "otros":     categoriaValida = categoria.includes("otros");     break;
           default:          categoriaValida = false;
         }
         if (!categoriaValida) return false;
@@ -217,6 +218,7 @@ export default function HomePage() {
                 <option value="despacho">Despacho</option>
                 <option value="seminario">Seminario</option>
                 <option value="pasillo">Pasillo</option>
+                <option value="otros">Otros</option>
               </select>
             </div>
 
@@ -333,7 +335,7 @@ export default function HomePage() {
                           }
                         </div>
                       )}
-                      {(e.categoria === "despacho" || e.categoria === "laboratorio") && (
+                      {(e.asignadoAEina || e.departamentoId || (e.usuariosAsignados ?? []).length > 0) && (
                         <div style={{ fontSize: "10px", color: "#6b7280", marginTop: 2 }}>
                           {e.asignadoAEina && <span>Asignado a la EINA</span>}
                           {!e.asignadoAEina && e.departamentoId && !(e.usuariosAsignados ?? []).length && (
