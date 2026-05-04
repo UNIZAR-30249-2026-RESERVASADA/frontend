@@ -41,6 +41,14 @@ export default function ReservaPage() {
     return { apertura, cierre };
   }, [espacios]);
 
+  const fechaMinima = (() => {
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(manana);
+  })();
+
   const [fecha,         setFecha]         = useState("");
   const [horaInicio,    setHoraInicio]    = useState("");
   const [duracion,      setDuracion]      = useState("");
@@ -219,7 +227,8 @@ export default function ReservaPage() {
                   <FiCalendar style={{ display: "inline", marginRight: 6 }} />Fecha
                 </label>
                 <input
-                  type="date" className="reserva-form-input"
+                  type="date"
+                min={fechaMinima} className="reserva-form-input"
                   value={fecha} onChange={(e) => setFecha(e.target.value)} required
                 />
               </div>
