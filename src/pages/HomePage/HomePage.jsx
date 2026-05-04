@@ -20,7 +20,7 @@ export default function HomePage() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [mostrarTooltip,        setMostrarTooltip]        = useState(false);
   const [mostrarPermisos,       setMostrarPermisos]       = useState(false);
-  const [capacidadMinima,       setCapacidadMinima]       = useState(0);
+  const [capacidadMinima,       setCapacidadMinima]       = useState("");
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -135,9 +135,11 @@ export default function HomePage() {
         if (!nombre.includes(filtroTexto) && !idEspacio.includes(filtroTexto) && !categoria.includes(filtroTexto)) return false;
       }
 
-      if (capacidadMinima > 0) {
+      if (capacidadMinima !== "" && Number(capacidadMinima) > 0) {
         const aforo = Number(props.aforo ?? 0);
-        if (aforo < capacidadMinima) return false;
+        const pct   = Number(props.porcentajeOcupacion ?? props.edificioPorcentaje ?? 100);
+        const aforoEfectivo = Math.floor(aforo * pct / 100);
+        if (aforoEfectivo < Number(capacidadMinima)) return false;
       }
 
       return true;
@@ -226,21 +228,18 @@ export default function HomePage() {
               </select>
             </div>
 
-            <label className="form-label" htmlFor="capacidad">Capacidad mínima</label>
-            <div className="field-select">
-              <select
+            <label className="form-label" htmlFor="capacidad">Nº de ocupantes</label>
+            <div className="field-with-icon">
+              <FiUsers className="field-icon" />
+              <input
                 id="capacidad"
-                className="form-select"
+                type="number"
+                className="form-input"
+                min="1"
+                placeholder="Nº de personas..."
                 value={capacidadMinima}
-                onChange={(e) => setCapacidadMinima(Number(e.target.value))}
-              >
-                <option value={0}>Cualquier capacidad</option>
-                <option value={10}>10+ personas</option>
-                <option value={20}>20+ personas</option>
-                <option value={30}>30+ personas</option>
-                <option value={50}>50+ personas</option>
-                <option value={100}>100+ personas</option>
-              </select>
+                onChange={(e) => setCapacidadMinima(e.target.value)}
+              />
             </div>
 
             <div className="form-label form-label-inline"><span>Planta</span></div>
@@ -318,7 +317,21 @@ export default function HomePage() {
 
                       <div className="resultado-subinfo">
                         <FiUsers size={11} style={{ color: "#6b7280", flexShrink: 0 }} />
-                        <span>{e.aforo ?? "N/D"} personas</span>
+                        {(() => {
+                          const aforo = e.aforo ?? null;
+                          const pct   = Number(e.porcentajeOcupacion ?? e.edificioPorcentaje ?? 100);
+                          const aforoEfectivo = aforo !== null ? Math.floor(aforo * pct / 100) : null;
+                          const colorCat = colorPorCategoria(e.categoria);
+                          if (pct < 100 && aforoEfectivo !== null) {
+                            return (
+                              <>
+                                <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 11 }}>{aforo}</span>
+                                <span style={{ color: colorCat, fontWeight: 600 }}>{aforoEfectivo} máx. ({pct}%)</span>
+                              </>
+                            );
+                          }
+                          return <span>{aforo ?? "N/D"} personas</span>;
+                        })()}
                         <span className="resultado-dot">·</span>
                         <span className={"resultado-estado-text " + (disponible ? "resultado-estado-disponible" : "resultado-estado-ocupado")}>
                           {disponible ? "Reservable" : "No reservable"}
