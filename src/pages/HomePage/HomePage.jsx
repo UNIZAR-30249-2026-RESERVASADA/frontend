@@ -2,9 +2,9 @@ import { useMemo, useState, useEffect } from "react";
 import { useEspaciosGeo } from "../../hooks/useEspaciosGeo";
 import { useAuth } from "../../hooks/useAuth";
 import MapaEspacios from "../../components/MapaEspacios";
-import { FiSearch, FiInfo, FiLogOut } from "react-icons/fi";
+import { FiSearch, FiInfo, FiUsers, FiClock } from "react-icons/fi";
+import Header from "../../components/Header";
 import { useNavigate } from "react-router-dom";
-import unizarLogo from "../../assets/images/unizar.png";
 import { colorPorCategoria } from "../../utils/coloresEspacio";
 import { puedeReservarEspacio, categoriasLibres, categoriasConRestriccionDepartamento } from "../../utils/restriccionesReserva";
 import "./HomePage.css";
@@ -12,7 +12,7 @@ import "./HomePage.css";
 export default function HomePage() {
   const navigate = useNavigate();
   const { data, loading, error } = useEspaciosGeo();
-  const { usuario, loading: authLoading, logout } = useAuth();
+  const { usuario, loading: authLoading } = useAuth();
   const [plantaSeleccionada,    setPlantaSeleccionada]    = useState("");
   const [espacioSeleccionado,   setEspacioSeleccionado]   = useState(null);
   const [espaciosSeleccionados, setEspaciosSeleccionados] = useState([]);
@@ -20,6 +20,7 @@ export default function HomePage() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [mostrarTooltip,        setMostrarTooltip]        = useState(false);
   const [mostrarPermisos,       setMostrarPermisos]       = useState(false);
+  const [capacidadMinima,       setCapacidadMinima]       = useState(0);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -53,6 +54,10 @@ export default function HomePage() {
   };
 
   const getRestriccionesLineas = () => {
+    if (usuario?.esGerente) return [
+      "Rol: gerente",
+      "Puedes reservar siempre: todo lo que esté marcado como reservable",
+    ];
     if (!usuario?.rol) return ["Sin permisos definidos"];
     const rol      = usuario.rol.toLowerCase();
     const libres   = categoriasLibres(rol);
@@ -116,6 +121,7 @@ export default function HomePage() {
           case "despacho":  categoriaValida = categoria.includes("despacho");  break;
           case "seminario": categoriaValida = categoria.includes("seminario"); break;
           case "pasillo":   categoriaValida = categoria.includes("pasillo");   break;
+          case "otros":     categoriaValida = categoria.includes("otros");     break;
           default:          categoriaValida = false;
         }
         if (!categoriaValida) return false;
@@ -125,45 +131,21 @@ export default function HomePage() {
         if (!nombre.includes(filtroTexto) && !idEspacio.includes(filtroTexto) && !categoria.includes(filtroTexto)) return false;
       }
 
+      if (capacidadMinima > 0) {
+        const aforo = Number(props.aforo ?? 0);
+        if (aforo < capacidadMinima) return false;
+      }
+
       return true;
     });
-  }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada]);
+  }, [data, plantaSeleccionada, textoBusqueda, categoriaSeleccionada, capacidadMinima]);
 
   if (authLoading) return null;
   if (!usuario)    return null;
 
   return (
     <div className="home-root">
-      <header className="home-topbar">
-        <div className="home-topbar-left">
-          <img src={unizarLogo} alt="Universidad Zaragoza" className="home-logo-img" />
-          <div>
-            <h1 className="home-app-title">ByronSpace</h1>
-            <p className="home-app-subtitle">Sistema de Reservas · Ada Byron</p>
-          </div>
-        </div>
-        <div className="home-topbar-right">
-          <button className="home-topbar-link" onClick={() => navigate("/mis-reservas")}>
-            Mis reservas
-          </button>
-          <div className="home-user-info">
-            <div className="home-user-details">
-              <div className="home-user-name">{usuario?.nombre || "Usuario"}</div>
-              <div className="home-user-role">{usuario?.rol || "Sin rol"}</div>
-            </div>
-            <div className="home-user-circle">
-              {(usuario?.nombre || "U").charAt(0).toUpperCase()}
-            </div>
-          </div>
-          <button
-            className="home-topbar-logout"
-            onClick={() => { logout(); navigate("/login"); }}
-            title="Cerrar sesión"
-          >
-            <FiLogOut size={18} />
-          </button>
-        </div>
-      </header>
+      <Header />
 
       <div className="home-layout">
         <aside className="home-sidebar">
@@ -236,16 +218,24 @@ export default function HomePage() {
                 <option value="despacho">Despacho</option>
                 <option value="seminario">Seminario</option>
                 <option value="pasillo">Pasillo</option>
+                <option value="otros">Otros</option>
               </select>
             </div>
 
             <label className="form-label" htmlFor="capacidad">Capacidad mínima</label>
             <div className="field-select">
-              <select id="capacidad" className="form-select">
-                <option>Cualquier capacidad</option>
-                <option>10+</option>
-                <option>20+</option>
-                <option>30+</option>
+              <select
+                id="capacidad"
+                className="form-select"
+                value={capacidadMinima}
+                onChange={(e) => setCapacidadMinima(Number(e.target.value))}
+              >
+                <option value={0}>Cualquier capacidad</option>
+                <option value={10}>10+ personas</option>
+                <option value={20}>20+ personas</option>
+                <option value={30}>30+ personas</option>
+                <option value={50}>50+ personas</option>
+                <option value={100}>100+ personas</option>
               </select>
             </div>
 
@@ -323,14 +313,29 @@ export default function HomePage() {
                       </div>
 
                       <div className="resultado-subinfo">
-                        <span className="resultado-personas-icon">👤</span>
-                        <span className="resultado-personas">{e.aforo ?? "N/D"} personas</span>
+                        <FiUsers size={11} style={{ color: "#6b7280", flexShrink: 0 }} />
+                        <span>{e.aforo ?? "N/D"} personas</span>
                         <span className="resultado-dot">·</span>
                         <span className={"resultado-estado-text " + (disponible ? "resultado-estado-disponible" : "resultado-estado-ocupado")}>
-                          {disponible ? "Disponible" : "Ocupado"}
+                          {disponible ? "Reservable" : "No reservable"}
                         </span>
                       </div>
-                      {(e.categoria === "despacho" || e.categoria === "laboratorio") && (
+                      {(e.horarioApertura || e.edificioHorarioApertura) && (
+                        <div className="resultado-horario">
+                          <FiClock size={11} style={{ color: "#6b7280", flexShrink: 0 }} />
+                          <span>
+                            {e.horarioApertura
+                              ? `${e.horarioApertura} – ${e.horarioCierre}`
+                              : `${e.edificioHorarioApertura} – ${e.edificioHorarioCierre}`
+                            }
+                          </span>
+                          {e.horarioApertura
+                            ? <span className="resultado-horario-badge resultado-horario-badge--propio">Propio</span>
+                            : <span className="resultado-horario-badge">{e.edificioNombre || "Edificio"}</span>
+                          }
+                        </div>
+                      )}
+                      {(e.asignadoAEina || e.departamentoId || (e.usuariosAsignados ?? []).length > 0) && (
                         <div style={{ fontSize: "10px", color: "#6b7280", marginTop: 2 }}>
                           {e.asignadoAEina && <span>Asignado a la EINA</span>}
                           {!e.asignadoAEina && e.departamentoId && !(e.usuariosAsignados ?? []).length && (

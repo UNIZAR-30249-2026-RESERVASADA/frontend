@@ -40,13 +40,15 @@ export function categoriasConRestriccionDepartamento(rol) {
  * @returns {{ puede: boolean, motivo: string|null }}
  */
 export function puedeReservarEspacio(espacio, usuario) {
-  if (!usuario?.rol) return { puede: false, motivo: "Sin rol asignado" };
   if (!espacio?.categoria) return { puede: false, motivo: "Sin categoría" };
+
+  // Gerente puede reservar cualquier espacio reservable
+  if (usuario?.esGerente) return { puede: true, motivo: null };
+
+  if (!usuario?.rol) return { puede: false, motivo: "Sin rol asignado" };
 
   const rol       = usuario.rol.toLowerCase();
   const categoria = espacio.categoria.toLowerCase();
-
-  if (rol === "gerente") return { puede: true, motivo: null };
 
   const libres  = categoriasLibres(rol);
   const conDpto = categoriasConRestriccionDepartamento(rol);

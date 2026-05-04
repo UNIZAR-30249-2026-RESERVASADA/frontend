@@ -13,12 +13,10 @@ export async function crearReserva(payload) {
     },
     body: JSON.stringify(payload),
   });
-
   if (!resp.ok) {
     const errBody = await resp.json().catch(() => ({}));
     throw new Error(errBody.message || "No se pudo crear la reserva");
   }
-
   return await resp.json();
 }
 
@@ -26,12 +24,10 @@ export async function getMisReservas() {
   const resp = await fetch(`${API_BASE_URL}/reservas/mis-reservas`, {
     headers: { "Authorization": `Bearer ${getToken()}` },
   });
-
   if (!resp.ok) {
     const errBody = await resp.json().catch(() => ({}));
     throw new Error(errBody.message || "Error obteniendo reservas");
   }
-
   return await resp.json();
 }
 
@@ -40,11 +36,32 @@ export async function cancelarReserva(reservaId) {
     method: "DELETE",
     headers: { "Authorization": `Bearer ${getToken()}` },
   });
-
   if (!resp.ok) {
     const errBody = await resp.json().catch(() => ({}));
     throw new Error(errBody.message || "Error cancelando la reserva");
   }
+  return await resp.json();
+}
 
+export async function getReservasVivas() {
+  const resp = await fetch(`${API_BASE_URL}/reservas/vivas`, {
+    headers: { "Authorization": `Bearer ${getToken()}` },
+  });
+  if (!resp.ok) {
+    const errBody = await resp.json().catch(() => ({}));
+    throw new Error(errBody.message || "Error obteniendo reservas vivas");
+  }
+  return await resp.json();
+}
+
+export async function eliminarReservaAdmin(reservaId) {
+  const resp = await fetch(`${API_BASE_URL}/reservas/${reservaId}/admin`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${getToken()}` },
+  });
+  if (!resp.ok) {
+    const errBody = await resp.json().catch(() => ({}));
+    throw new Error(errBody.message || "Error eliminando la reserva");
+  }
   return await resp.json();
 }

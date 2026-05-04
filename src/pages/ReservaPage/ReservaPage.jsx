@@ -1,19 +1,45 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiCalendar, FiClock, FiUsers, FiFileText, FiMessageSquare, FiMapPin, FiLogOut } from "react-icons/fi";
+import { FiCalendar, FiClock, FiUsers, FiFileText, FiMessageSquare, FiMapPin, FiAlertCircle, FiInfo } from "react-icons/fi";
 import { useAuth } from "../../hooks/useAuth";
 import { colorIconPorCategoria } from "../../utils/coloresEspacio";
 import { crearReserva } from "../../services/reservasService";
-import unizarLogo from "../../assets/images/unizar.png";
+import Header from "../../components/Header";
 import "./ReservaPage.css";
 
 export default function ReservaPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { usuario, logout } = useAuth();
+  const { usuario } = useAuth();
 
   // Recibe array de espacios desde HomePage
   const espacios = location.state?.espacios || [];
+
+  // Calcular aforo permitido por espacio según porcentaje efectivo
+  const aforoPermitidoPorEspacio = React.useMemo(() => {
+    const resultado = {};
+    for (const esp of espacios) {
+      const aforo = esp.aforo ?? null;
+      const pct   = esp.porcentajeOcupacion ?? esp.edificioPorcentaje ?? 100;
+      const id    = esp.gid || esp.id_espacio;
+      resultado[id] = aforo !== null ? Math.floor(aforo * pct / 100) : null;
+    }
+    return resultado;
+  }, [espacios]);
+
+  // Calcular intersección de horarios de todos los espacios seleccionados
+  const horarioInterseccion = React.useMemo(() => {
+    if (!espacios.length) return null;
+    let apertura = null;
+    let cierre   = null;
+    for (const esp of espacios) {
+      const ap = esp.horarioApertura || esp.edificioHorarioApertura || null;
+      const ci = esp.horarioCierre   || esp.edificioHorarioCierre   || null;
+      if (ap) apertura = apertura ? (ap > apertura ? ap : apertura) : ap;
+      if (ci) cierre   = cierre   ? (ci < cierre   ? ci : cierre)   : ci;
+    }
+    return { apertura, cierre };
+  }, [espacios]);
 
   const [fecha,         setFecha]         = useState("");
   const [horaInicio,    setHoraInicio]    = useState("");
@@ -45,6 +71,15 @@ export default function ReservaPage() {
       return;
     }
 
+    // Validar que todos los espacios tienen numPersonas
+    for (const esp of espacios) {
+      const id = esp.gid || esp.id_espacio;
+      if (!numPersonasPorEspacio[id]) {
+        setError(`Indica el número de asistentes para "${esp.nombre || esp.id_espacio}"`);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       await crearReserva({
@@ -70,36 +105,7 @@ export default function ReservaPage() {
 
   return (
     <div className="reserva-root">
-      <header className="reserva-topbar">
-        <div className="reserva-topbar-left">
-          <img src={unizarLogo} alt="Universidad Zaragoza" className="reserva-logo-img" />
-          <div>
-            <h1 className="reserva-app-title">ByronSpace</h1>
-            <p className="reserva-app-subtitle">Sistema de Reservas · Ada Byron</p>
-          </div>
-        </div>
-        <div className="reserva-topbar-right">
-          <button className="reserva-topbar-link" onClick={() => navigate("/mis-reservas")}>
-            Mis reservas
-          </button>
-          <div className="reserva-user-info">
-            <div className="reserva-user-details">
-              <div className="reserva-user-name">{usuario?.nombre || "Usuario"}</div>
-              <div className="reserva-user-role">{usuario?.rol || "Sin rol"}</div>
-            </div>
-            <div className="reserva-user-circle">
-              {(usuario?.nombre || "U").charAt(0).toUpperCase()}
-            </div>
-          </div>
-          <button
-            className="reserva-topbar-logout"
-            onClick={() => { logout(); navigate("/login"); }}
-            title="Cerrar sesión"
-          >
-            <FiLogOut size={18} />
-          </button>
-        </div>
-      </header>
+      <Header />
 
       <main className="reserva-main">
         {/* Cabecera */}
@@ -138,7 +144,22 @@ export default function ReservaPage() {
                     <div className="reserva-space-capacity-icon" style={{ color: colorIcon.text }}>
                       <FiUsers size={18} />
                     </div>
-                    <div className="reserva-space-capacity-text">{aforo} personas</div>
+                    <div className="reserva-space-capacity-text">
+                      {(() => {
+                        const id = esp.gid || esp.id_espacio;
+                        const pct = esp.porcentajeOcupacion ?? esp.edificioPorcentaje ?? 100;
+                        const aforoPermitido = aforoPermitidoPorEspacio[id];
+                        if (pct < 100 && aforoPermitido !== null) {
+                          return (
+                            <>
+                              <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 11 }}>{aforo} personas</span>
+                              <span style={{ color: colorIcon.text, fontWeight: 600 }}>{aforoPermitido} máx. ({pct}%)</span>
+                            </>
+                          );
+                        }
+                        return <span>{aforo} personas</span>;
+                      })()}
+                    </div>
                   </div>
                 </div>
               );
@@ -149,6 +170,29 @@ export default function ReservaPage() {
         {/* Formulario */}
         <section className="reserva-card">
           <h2 className="reserva-card-title">Detalles de la Reserva</h2>
+
+          {/* Aviso de horario disponible */}
+          {horarioInterseccion?.apertura && (
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              background: "#eff6ff", border: "1px solid #bfdbfe",
+              borderRadius: 10, padding: "12px 14px", marginBottom: 16,
+              fontSize: 13, color: "#1e40af",
+            }}>
+              <FiInfo size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <strong>Horario disponible para esta reserva:</strong>
+                <span style={{ marginLeft: 6 }}>
+                  {horarioInterseccion.apertura} – {horarioInterseccion.cierre}
+                </span>
+                {espacios.length > 1 && (
+                  <div style={{ fontSize: 11, marginTop: 4, opacity: 0.8 }}>
+                    Intersección de los horarios de todos los espacios seleccionados
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* Fecha y hora */}
@@ -169,6 +213,8 @@ export default function ReservaPage() {
                 <input
                   type="time" className="reserva-form-input"
                   value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} required
+                  min={horarioInterseccion?.apertura || undefined}
+                  max={horarioInterseccion?.cierre   || undefined}
                 />
               </div>
             </div>
@@ -216,11 +262,16 @@ export default function ReservaPage() {
                 <input
                   type="number"
                   min={1}
-                  max={espacioActivo?.aforo ?? undefined}
+                  required
+                  max={aforoPermitidoPorEspacio[gidActivo] ?? espacioActivo?.aforo ?? undefined}
                   className="reserva-form-input"
                   value={numPersonasPorEspacio[gidActivo] || ""}
                   onChange={(e) => handleNumPersonasChange(e.target.value)}
-                  placeholder={espacioActivo?.aforo ? `Máx. ${espacioActivo.aforo}` : "Nº personas"}
+                  placeholder={
+                    aforoPermitidoPorEspacio[gidActivo] !== null && aforoPermitidoPorEspacio[gidActivo] !== undefined
+                      ? `Máx. ${aforoPermitidoPorEspacio[gidActivo]} (${espacioActivo?.porcentajeOcupacion ?? espacioActivo?.edificioPorcentaje ?? 100}%)`
+                      : espacioActivo?.aforo ? `Máx. ${espacioActivo.aforo}` : "Nº personas"
+                  }
                 />
               </div>
               {/* Resumen por espacio */}
