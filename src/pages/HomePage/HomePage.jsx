@@ -54,10 +54,14 @@ export default function HomePage() {
   };
 
   const getRestriccionesLineas = () => {
-    if (usuario?.esGerente) return [
-      "Rol: gerente",
-      "Puedes reservar siempre: todo lo que esté marcado como reservable",
-    ];
+    if (usuario?.esGerente) {
+      const rolLabel   = usuario.rol === "docente_investigador" ? "Gerente + Docente-Investigador" : "Gerente";
+      const nombreDpto = getNombreDepartamento();
+      const lineas     = [`Rol: ${rolLabel}`];
+      if (nombreDpto) lineas.push(`Departamento: ${nombreDpto}`);
+      lineas.push("Puedes reservar siempre: todo lo que esté marcado como reservable");
+      return lineas;
+    }
     if (!usuario?.rol) return ["Sin permisos definidos"];
     const rol      = usuario.rol.toLowerCase();
     const libres   = categoriasLibres(rol);

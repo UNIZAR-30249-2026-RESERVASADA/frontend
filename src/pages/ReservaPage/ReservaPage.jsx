@@ -43,11 +43,28 @@ export default function ReservaPage() {
 
   const [fecha,         setFecha]         = useState("");
   const [horaInicio,    setHoraInicio]    = useState("");
-  const [duracion,      setDuracion]      = useState("60");
+  const [duracion,      setDuracion]      = useState("");
   const [tipoUso,       setTipoUso]       = useState("docencia");
   const [infoAdicional, setInfoAdicional] = useState("");
   const [error,         setError]         = useState("");
   const [loading,       setLoading]       = useState(false);
+
+  const advertenciaHorario = React.useMemo(() => {
+    if (!horaInicio || !duracion || !horarioInterseccion?.cierre) return null;
+    const [hI, mI] = horaInicio.split(":").map(Number);
+    const minInicio = hI * 60 + mI;
+    const minFin    = minInicio + Number(duracion) * 60;
+    const [hC, mC] = horarioInterseccion.cierre.split(":").map(Number);
+    const minCierre = hC * 60 + mC;
+    if (minFin > minCierre) {
+      const horaFinCalc = `${String(Math.floor(minFin / 60)).padStart(2, "0")}:${String(minFin % 60).padStart(2, "0")}`;
+      return `La reserva terminaría a las ${horaFinCalc}, fuera del horario de cierre (${horarioInterseccion.cierre}).`;
+    }
+    if (horarioInterseccion?.apertura && horaInicio < horarioInterseccion.apertura) {
+      return `La hora de inicio es anterior al horario de apertura (${horarioInterseccion.apertura}).`;
+    }
+    return null;
+  }, [horaInicio, duracion, horarioInterseccion]);
 
   // numPersonas por espacio: { [gid]: number }
   const [numPersonasPorEspacio, setNumPersonasPorEspacio] = useState({});
@@ -91,7 +108,7 @@ export default function ReservaPage() {
         })),
         fecha,
         horaInicio:  horaInicio.slice(0, 5),
-        duracion:    Number(duracion),
+        duracion:    Number(duracion) * 60, // convertir horas a minutos para el backend
         tipoUso,
         descripcion: infoAdicional,
       });
@@ -224,14 +241,24 @@ export default function ReservaPage() {
               <label className="reserva-form-label">
                 <FiClock style={{ display: "inline", marginRight: 6 }} />Duración
               </label>
-              <div className="reserva-field-select">
-                <select className="reserva-form-select" value={duracion} onChange={(e) => setDuracion(e.target.value)}>
-                  <option value="60">1 hora</option>
-                  <option value="120">2 horas</option>
-                  <option value="180">3 horas</option>
-                  <option value="240">4 horas</option>
-                </select>
-              </div>
+              <input
+                type="number"
+                className="reserva-form-input"
+                min="1"
+                max="12"
+                step="1"
+                placeholder="Ej: 2"
+                value={duracion}
+                onChange={(e) => setDuracion(e.target.value)}
+              />
+              {advertenciaHorario && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6,
+                  background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 6,
+                  padding: "6px 10px", fontSize: 12, color: "#92400e" }}>
+                  <FiAlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{advertenciaHorario}</span>
+                </div>
+              )}
             </div>
 
             {/* Asistentes por espacio */}

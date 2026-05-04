@@ -232,7 +232,11 @@ export default function Header({ backLink }) {
         <div className="hdr-user">
           <div className="hdr-user-details">
             <span className="hdr-user-name">{usuario?.nombre || "Usuario"}</span>
-            <span className="hdr-user-role">{usuario?.esGerente ? "Gerente" : usuario?.rol || "Sin rol"}</span>
+            <span className="hdr-user-role">
+              {usuario?.esGerente
+                ? (usuario.rol === "docente_investigador" ? "Gerente + Docente-Investigador" : "Gerente")
+                : (usuario?.rol || "Sin rol")}
+            </span>
           </div>
           <div className="hdr-user-circle">{(usuario?.nombre || "U").charAt(0).toUpperCase()}</div>
         </div>
