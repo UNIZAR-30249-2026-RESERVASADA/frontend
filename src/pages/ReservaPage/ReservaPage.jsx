@@ -49,6 +49,12 @@ export default function ReservaPage() {
     }).format(manana);
   })();
 
+  const esFindeSemana = (fechaStr) => {
+    if (!fechaStr) return false;
+    const dia = new Date(fechaStr + "T12:00:00").getDay();
+    return dia === 0 || dia === 6;
+  };
+
   const [fecha,         setFecha]         = useState("");
   const [horaInicio,    setHoraInicio]    = useState("");
   const [duracion,      setDuracion]      = useState("");
@@ -228,9 +234,17 @@ export default function ReservaPage() {
                 </label>
                 <input
                   type="date"
-                min={fechaMinima} className="reserva-form-input"
+                  min={fechaMinima} className="reserva-form-input"
                   value={fecha} onChange={(e) => setFecha(e.target.value)} required
                 />
+                {fecha && esFindeSemana(fecha) && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6,
+                    background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 6,
+                    padding: "6px 10px", fontSize: 12, color: "#92400e" }}>
+                    <FiAlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>No se pueden hacer reservas en fin de semana.</span>
+                  </div>
+                )}
               </div>
               <div className="reserva-form-group">
                 <label className="reserva-form-label">
