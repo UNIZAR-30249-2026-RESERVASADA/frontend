@@ -41,13 +41,44 @@ export default function ReservaPage() {
     return { apertura, cierre };
   }, [espacios]);
 
+  const fechaMinima = (() => {
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(manana);
+  })();
+
+  const esFindeSemana = (fechaStr) => {
+    if (!fechaStr) return false;
+    const dia = new Date(fechaStr + "T12:00:00").getDay();
+    return dia === 0 || dia === 6;
+  };
+
   const [fecha,         setFecha]         = useState("");
   const [horaInicio,    setHoraInicio]    = useState("");
-  const [duracion,      setDuracion]      = useState("60");
+  const [duracion,      setDuracion]      = useState("");
   const [tipoUso,       setTipoUso]       = useState("docencia");
   const [infoAdicional, setInfoAdicional] = useState("");
   const [error,         setError]         = useState("");
   const [loading,       setLoading]       = useState(false);
+
+  const advertenciaHorario = React.useMemo(() => {
+    if (!horaInicio || !duracion || !horarioInterseccion?.cierre) return null;
+    const [hI, mI] = horaInicio.split(":").map(Number);
+    const minInicio = hI * 60 + mI;
+    const minFin    = minInicio + Number(duracion) * 60;
+    const [hC, mC] = horarioInterseccion.cierre.split(":").map(Number);
+    const minCierre = hC * 60 + mC;
+    if (minFin > minCierre) {
+      const horaFinCalc = `${String(Math.floor(minFin / 60)).padStart(2, "0")}:${String(minFin % 60).padStart(2, "0")}`;
+      return `La reserva terminaría a las ${horaFinCalc}, fuera del horario de cierre (${horarioInterseccion.cierre}).`;
+    }
+    if (horarioInterseccion?.apertura && horaInicio < horarioInterseccion.apertura) {
+      return `La hora de inicio es anterior al horario de apertura (${horarioInterseccion.apertura}).`;
+    }
+    return null;
+  }, [horaInicio, duracion, horarioInterseccion]);
 
   // numPersonas por espacio: { [gid]: number }
   const [numPersonasPorEspacio, setNumPersonasPorEspacio] = useState({});
@@ -91,7 +122,7 @@ export default function ReservaPage() {
         })),
         fecha,
         horaInicio:  horaInicio.slice(0, 5),
-        duracion:    Number(duracion),
+        duracion:    Number(duracion) * 60, // convertir horas a minutos para el backend
         tipoUso,
         descripcion: infoAdicional,
       });
@@ -202,9 +233,18 @@ export default function ReservaPage() {
                   <FiCalendar style={{ display: "inline", marginRight: 6 }} />Fecha
                 </label>
                 <input
-                  type="date" className="reserva-form-input"
+                  type="date"
+                  min={fechaMinima} className="reserva-form-input"
                   value={fecha} onChange={(e) => setFecha(e.target.value)} required
                 />
+                {fecha && esFindeSemana(fecha) && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6,
+                    background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 6,
+                    padding: "6px 10px", fontSize: 12, color: "#92400e" }}>
+                    <FiAlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>No se pueden hacer reservas en fin de semana.</span>
+                  </div>
+                )}
               </div>
               <div className="reserva-form-group">
                 <label className="reserva-form-label">
@@ -224,14 +264,24 @@ export default function ReservaPage() {
               <label className="reserva-form-label">
                 <FiClock style={{ display: "inline", marginRight: 6 }} />Duración
               </label>
-              <div className="reserva-field-select">
-                <select className="reserva-form-select" value={duracion} onChange={(e) => setDuracion(e.target.value)}>
-                  <option value="60">1 hora</option>
-                  <option value="120">2 horas</option>
-                  <option value="180">3 horas</option>
-                  <option value="240">4 horas</option>
-                </select>
-              </div>
+              <input
+                type="number"
+                className="reserva-form-input"
+                min="1"
+                max="12"
+                step="1"
+                placeholder="Ej: 2"
+                value={duracion}
+                onChange={(e) => setDuracion(e.target.value)}
+              />
+              {advertenciaHorario && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6,
+                  background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 6,
+                  padding: "6px 10px", fontSize: 12, color: "#92400e" }}>
+                  <FiAlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{advertenciaHorario}</span>
+                </div>
+              )}
             </div>
 
             {/* Asistentes por espacio */}

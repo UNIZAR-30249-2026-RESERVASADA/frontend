@@ -153,7 +153,11 @@ export default function GerenciaReservasPage() {
                       </div>
                       <div className="gerencia-item-info">
                         <p className="gerencia-item-nombre">{nombreLabel}</p>
-                        <p className="gerencia-item-usuario">Usuario #{reserva.usuarioId}</p>
+                        <p className="gerencia-item-usuario">
+                          {reserva.usuarioNombre || `Usuario #${reserva.usuarioId}`}
+                          {reserva.usuarioRol && <span style={{ color: "#9ca3af" }}> · {reserva.usuarioRol}</span>}
+                          {reserva.usuarioEmail && <span style={{ color: "#9ca3af" }}> · {reserva.usuarioEmail}</span>}
+                        </p>
                         <div className="gerencia-item-meta">
                           <span className="gerencia-item-meta-item"><FiCalendar size={11} />
                             {new Date(reserva.fecha + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}

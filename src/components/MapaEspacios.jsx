@@ -77,7 +77,14 @@ export default function MapaEspacios({
     const uso        = props.uso        || "Sin uso";
     const categoria  = props.categoria  || "Sin categoría";
     const planta     = props.planta     || "Sin planta";
-    const aforo      = props.aforo      ?? "N/D";
+    const aforoBruto    = props.aforo ?? null;
+    const pct           = Number(props.porcentajeOcupacion ?? props.edificioPorcentaje ?? 100);
+    const aforoEfectivo = aforoBruto !== null ? Math.floor(aforoBruto * pct / 100) : null;
+    const colorCat      = colorPorCategoria(categoria);
+    const aforoStr      = aforoBruto === null ? "N/D"
+      : pct < 100
+        ? `<span style="text-decoration:line-through;color:#9ca3af;">${aforoBruto}</span> <span style="color:${colorCat};font-weight:600;">${aforoEfectivo} máx. (${pct}%)</span>`
+        : `${aforoBruto} personas`;
     const reservable = props.reservable ? "Sí" : "No";
 
     // Horario efectivo — propio del espacio o heredado del edificio
@@ -97,7 +104,7 @@ export default function MapaEspacios({
           <div><span style="color:#6b7280; font-size:11px;">USO FÍSICO</span><br/>${uso}</div>
           <div><span style="color:#6b7280; font-size:11px;">CATEGORÍA</span><br/>${categoria}</div>
           <div><span style="color:#6b7280; font-size:11px;">PLANTA</span><br/>P${planta}</div>
-          <div><span style="color:#6b7280; font-size:11px;">AFORO</span><br/>${aforo} personas</div>
+          <div><span style="color:#6b7280; font-size:11px;">AFORO</span><br/>${aforoStr}</div>
           <div><span style="color:#6b7280; font-size:11px;">HORARIO</span><br/>${horarioStr}</div>
           <div><span style="color:#6b7280; font-size:11px;">RESERVABLE</span><br/>
             <span style="color:${props.reservable ? "#16a34a" : "#dc2626"}; font-weight:600;">
