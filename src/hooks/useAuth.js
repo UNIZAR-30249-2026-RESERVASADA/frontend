@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { loginRequest } from "../services/authService";
+import { loginRequest, getMeRequest } from "../services/authService";
 
 export function useAuth() {
   const [usuario, setUsuario] = useState(null);
@@ -42,5 +42,18 @@ export function useAuth() {
     localStorage.removeItem("token");
   };
 
-  return { usuario, token, loading, login, logout };
+  const refreshUsuario = async () => {
+    const tokenGuardado = localStorage.getItem("token");
+    if (!tokenGuardado) return;
+    try {
+      const usuarioActualizado = await getMeRequest(tokenGuardado);
+      localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+      setUsuario(usuarioActualizado);
+    } catch {
+      // si falla no hacemos nada
+    }
+  };
+
+
+  return { usuario, token, loading, login, logout, refreshUsuario };
 }

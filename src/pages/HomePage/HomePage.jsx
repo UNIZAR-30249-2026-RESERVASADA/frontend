@@ -12,7 +12,7 @@ import "./HomePage.css";
 export default function HomePage() {
   const navigate = useNavigate();
   const { data, loading, error } = useEspaciosGeo();
-  const { usuario, loading: authLoading } = useAuth();
+  const { usuario, loading: authLoading, refreshUsuario } = useAuth();
   const [plantaSeleccionada,    setPlantaSeleccionada]    = useState("");
   const [espacioSeleccionado,   setEspacioSeleccionado]   = useState(null);
   const [espaciosSeleccionados, setEspaciosSeleccionados] = useState([]);
@@ -21,6 +21,10 @@ export default function HomePage() {
   const [mostrarTooltip,        setMostrarTooltip]        = useState(false);
   const [mostrarPermisos,       setMostrarPermisos]       = useState(false);
   const [capacidadMinima,       setCapacidadMinima]       = useState("");
+
+  useEffect(() => {
+    refreshUsuario();
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -138,7 +142,7 @@ export default function HomePage() {
       if (capacidadMinima !== "" && Number(capacidadMinima) > 0) {
         const aforo = Number(props.aforo ?? 0);
         const pct   = Number(props.porcentajeOcupacion ?? props.edificioPorcentaje ?? 100);
-        const aforoEfectivo = Math.floor(aforo * pct / 100);
+        const aforoEfectivo = Math.ceil(aforo * pct / 100);
         if (aforoEfectivo < Number(capacidadMinima)) return false;
       }
 
@@ -320,7 +324,7 @@ export default function HomePage() {
                         {(() => {
                           const aforo = e.aforo ?? null;
                           const pct   = Number(e.porcentajeOcupacion ?? e.edificioPorcentaje ?? 100);
-                          const aforoEfectivo = aforo !== null ? Math.floor(aforo * pct / 100) : null;
+                          const aforoEfectivo = aforo !== null ? Math.ceil(aforo * pct / 100) : null;
                           const colorCat = colorPorCategoria(e.categoria);
                           if (pct < 100 && aforoEfectivo !== null) {
                             return (
