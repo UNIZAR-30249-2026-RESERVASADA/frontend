@@ -3,7 +3,7 @@ const CATEGORIAS_LIBRES = {
   investigador_contratado: ["aula", "seminario", "sala comun"],
   docente_investigador:    ["aula", "seminario", "sala comun"],
   tecnico_laboratorio:     ["seminario", "sala comun"],
-  conserje:                ["aula", "seminario", "sala comun"],
+  conserje:                ["aula", "seminario", "sala comun", "laboratorio"],
   investigador_visitante:  ["aula", "seminario", "sala comun"],
   gerente:                 ["aula", "seminario", "sala comun", "laboratorio", "despacho"],
 };
@@ -13,7 +13,7 @@ const CATEGORIAS_CON_RESTRICCION_DPTO = {
   investigador_contratado: ["laboratorio", "despacho"],
   docente_investigador:    ["laboratorio", "despacho"],
   tecnico_laboratorio:     ["laboratorio"],
-  investigador_visitante:  ["laboratorio", "despacho"],
+  investigador_visitante:  ["laboratorio"],
   conserje:                [],
   gerente:                 [],
 };
@@ -68,12 +68,15 @@ export function puedeReservarEspacio(espacio, usuario) {
       const tieneUsuarios     = usuariosAsignados.length > 0;
       const hayVisitante      = usuariosAsignados.some((u) => u.rol === "investigador_visitante");
 
-      // Investigador visitante — solo puede reservar si está asignado a él
-      if (rol === "investigador_visitante") {
-        const estaAsignado = usuariosAsignados.some((u) => String(u.id) === String(usuario.id));
-        if (estaAsignado) return { puede: true, motivo: null };
-        return { puede: false, motivo: "Este despacho no está asignado a ti" };
-      }
+      // Para O7: obtener el departamento del visitante asignado
+      const visitante     = usuariosAsignados.find((u) => u.rol === "investigador_visitante");
+      const dptoVisitante = visitante?.departamentoId ?? null;
+
+      const mismoDepto =
+        usuario.departamentoId && (
+          (espacio.departamentoId && String(usuario.departamentoId) === String(espacio.departamentoId)) ||
+          (dptoVisitante && String(usuario.departamentoId) === String(dptoVisitante))
+        );
 
       // O3: asignado a departamento (sin usuarios) — mismo departamento
       if (!tieneUsuarios && mismoDepto) return { puede: true, motivo: null };

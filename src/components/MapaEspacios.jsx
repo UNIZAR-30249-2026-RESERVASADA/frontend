@@ -79,7 +79,7 @@ export default function MapaEspacios({
     const planta     = props.planta     || "Sin planta";
     const aforoBruto    = props.aforo ?? null;
     const pct           = Number(props.porcentajeOcupacion ?? props.edificioPorcentaje ?? 100);
-    const aforoEfectivo = aforoBruto !== null ? Math.floor(aforoBruto * pct / 100) : null;
+    const aforoEfectivo = aforoBruto !== null ? Math.ceil(aforoBruto * pct / 100) : null;
     const colorCat      = colorPorCategoria(categoria);
     const aforoStr      = aforoBruto === null ? "N/D"
       : pct < 100
