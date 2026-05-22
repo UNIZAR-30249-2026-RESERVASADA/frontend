@@ -22,7 +22,7 @@ export default function ReservaPage() {
       const aforo = esp.aforo ?? null;
       const pct   = esp.porcentajeOcupacion ?? esp.edificioPorcentaje ?? 100;
       const id    = esp.gid || esp.id_espacio;
-      resultado[id] = aforo !== null ? Math.floor(aforo * pct / 100) : null;
+      resultado[id] = aforo !== null ? Math.ceil(aforo * pct / 100) : null;
     }
     return resultado;
   }, [espacios]);
@@ -71,7 +71,7 @@ export default function ReservaPage() {
     const [hC, mC] = horarioInterseccion.cierre.split(":").map(Number);
     const minCierre = hC * 60 + mC;
     if (minFin > minCierre) {
-      const horaFinCalc = `${String(Math.floor(minFin / 60)).padStart(2, "0")}:${String(minFin % 60).padStart(2, "0")}`;
+      const horaFinCalc = `${String(Math.ceil(minFin / 60)).padStart(2, "0")}:${String(minFin % 60).padStart(2, "0")}`;
       return `La reserva terminaría a las ${horaFinCalc}, fuera del horario de cierre (${horarioInterseccion.cierre}).`;
     }
     if (horarioInterseccion?.apertura && horaInicio < horarioInterseccion.apertura) {

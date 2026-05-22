@@ -14,3 +14,16 @@ export async function loginRequest(email, password) {
 
   return await resp.json();
 }
+
+export async function getMeRequest(token) {
+  const resp = await fetch(`${API_BASE_URL}/usuarios/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!resp.ok) {
+    const errBody = await resp.json().catch(() => ({}));
+    throw new Error(errBody.message || `Error ${resp.status}`);
+  }
+
+  return await resp.json();
+}
